@@ -1,0 +1,8 @@
+Production:
+svelte-adapter-bun | bun add -D svelte-adapter-bun
+
+Development:
+@unsass/breakpoint
+lucide-svelte
+modern-normalize
+nprogress
