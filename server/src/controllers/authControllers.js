@@ -1,105 +1,129 @@
-import User from "../models/userModel";
-import catchAsync from "../helpers/catchAsync";
-import APIError from "../helpers/APIError";
-import bcryptjs from "bcryptjs";
-import signTokens from "../helpers/signTokens";
-import updateUser from "../helpers/user_helpers/updateUser";
-import findUser from "../helpers/user_helpers/findUser";
-import { v4 } from "uuid";
+import User from '../models/userModel';
+import Profile from '../models/profileModel';
+import Collection from '../models/collectionModel';
+import catchAsync from '../helpers/catchAsync';
+import APIError from '../helpers/APIError';
+import bcryptjs from 'bcryptjs';
+import signTokens from '../helpers/signTokens';
+import updateUser from '../helpers/user_helpers/updateUser';
+import findUser from '../helpers/user_helpers/findUser';
+import { v4 } from 'uuid';
 
 export const checkUserNameAndPwd = (req, res, next) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return next(new APIError("No username or password provided.", 400));
-  }
-  next();
+	const { username, password } = req.body;
+	if (!username || !password) {
+		return next(new APIError('No username or password provided.', 400));
+	}
+	next();
 };
 
+// Function to LOGIN into user existing account
 export const login = catchAsync(async (req, res, next) => {
-  const { username, password } = req.body;
+	const { username, password } = req.body;
 
-  const userDoc = await findUser({ username });
+	const userDoc = await findUser({ username });
 
-  if (!userDoc) {
-    return next(new APIError("User not found.", 404));
-  }
+	if (!userDoc) {
+		return next(new APIError('User not found.', 404));
+	}
 
-  const isMatch = await bcryptjs.compare(password, userDoc.password);
+	const isMatch = await bcryptjs.compare(password, userDoc.password);
 
-  if (isMatch === false) {
-    return next(new APIError("Invalid credentioals.", 403));
-  }
+	if (isMatch === false) {
+		return next(new APIError('Invalid credentioals.', 403));
+	}
 
-  const { accessToken, refreshToken } = signTokens(userDoc.user_id);
+	const { accessToken, refreshToken } = signTokens(userDoc.user_id);
 
-  const updatedUser = await updateUser(
-    { user_id: userDoc.user_id },
-    { refresh_token: refreshToken }
-  );
+	const updatedUser = await updateUser(
+		{ user_id: userDoc.user_id },
+		{ refresh_token: refreshToken }
+	);
 
-  if (!updatedUser) {
-    return next(
-      new APIError("An error occurred while creating your account.", 500)
-    );
-  }
+	if (!updatedUser) {
+		return next(new APIError('An error occurred while creating your account.', 500));
+	}
 
-  res.status(200).json({ status: "success", access_token: accessToken });
+	res.status(200).json({ status: 'success', access_token: accessToken });
 });
 
+// Function to create NEW account
 export const signup = catchAsync(async (req, res, next) => {
-  const { username, password, password_confirm } = req.body;
+	const { username, password, password_confirm } = req.body;
 
-  if (!password_confirm) {
-    return next(new APIError("Please confirm your password.", 400));
-  }
-  if (password !== password_confirm) {
-    return next(new APIError("Please check if your passwords match.", 400));
-  }
+	if (!password_confirm) {
+		return next(new APIError('Please confirm your password.', 400));
+	}
+	if (password !== password_confirm) {
+		return next(new APIError('Please check if your passwords match.', 400));
+	}
 
-  const hashedPwd = await bcryptjs.hash(password, 10);
-  const userId = v4();
-  const { accessToken, refreshToken } = signTokens(userId);
+	const hashedPwd = await bcryptjs.hash(password, 10);
+	const userId = v4();
+	const { accessToken, refreshToken } = signTokens(userId);
 
-  const newUser = new User({
-    user_id: userId,
-    username,
-    password: hashedPwd,
-    refresh_token: refreshToken,
-  });
+	const newUser = new User({
+		user_id: userId,
+		username,
+		password: hashedPwd,
+		refresh_token: refreshToken
+	});
 
-  await newUser.save();
+	const userProfile = new Profile({
+		user_id: userId,
+		username,
+		gems: 0,
+		image_path: '/src/assets/default_profile.webp',
+		free_gem_sets: 5,
+		favourite_trades: [],
+		favourite_collections: [],
+		favourite_cards: []
+	});
 
-  res.status(200).json({ status: "success", access_token: accessToken });
+	const collection = new Collection({
+		user_id: userId,
+		username,
+		cards: []
+	});
+
+	const userSave = newUser.save();
+	const profileSave = userProfile.save();
+	const collectionSave = collection.save();
+	const [userSaveResult, profileSaveResult, collectionSaveResult] = await Promise.all([
+		userSave,
+		profileSave,
+		collectionSave
+	]);
+
+	if (!userSaveResult || !profileSaveResult || !collectionSaveResult) {
+		return next(new APIError('Something went wrong while creating your profile.', 500));
+	}
+
+	res.status(200).json({ status: 'success', access_token: accessToken });
 });
 
 export const logoutAll = catchAsync(async (req, res, next) => {
-  const userId = req.user.user_id;
+	const userId = req.user.user_id;
 
-  const updatedUser = await updateUser(
-    { user_id: userId },
-    { refresh_token: null }
-  );
+	const updatedUser = await updateUser({ user_id: userId }, { refresh_token: null });
 
-  if (!updatedUser) {
-    return next(new APIError("Could not log you out.", 500));
-  }
+	if (!updatedUser) {
+		return next(new APIError('Could not log you out.', 500));
+	}
 
-  res.status(200).json({ status: "success", message: "You logged out." });
+	res.status(200).json({ status: 'success', message: 'You logged out.' });
 });
 
 export const refresh = catchAsync(async (req, res, next) => {
-  const { user_id } = req.user;
+	const { user_id } = req.user;
 
-  const { accessToken, refreshToken } = signTokens(user_id);
+	const { accessToken, refreshToken } = signTokens(user_id);
 
-  const updatedUser = await updateUser(
-    { user_id: user_id },
-    { refresh_token: refreshToken }
-  );
+	const updatedUser = await updateUser({ user_id: user_id }, { refresh_token: refreshToken });
 
-  if (!updatedUser) {
-    return next(new APIError("Could not refresh tokens.", 500));
-  }
+	if (!updatedUser) {
+		return next(new APIError('Could not refresh tokens.', 500));
+	}
 
-  res.status(200).json({ status: "success", access_token: accessToken });
+	res.status(200).json({ status: 'success', access_token: accessToken });
 });
