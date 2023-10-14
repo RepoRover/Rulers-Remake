@@ -32,6 +32,11 @@ const heroModel = new mongoose.Schema({
 		type: String,
 		required: true,
 		unique: true
+	},
+	hero_link: {
+		type: String,
+		required: true,
+		unique: true
 	}
 });
 

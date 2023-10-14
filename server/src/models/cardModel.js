@@ -7,16 +7,9 @@ const cardSchema = new mongoose.Schema({
 		unique: true
 	},
 	card_owner: {
-		user_id: {
-			type: String,
-			required: true,
-			unique: true
-		},
-		username: {
-			type: String,
-			required: true,
-			unique: true
-		}
+		type: Object,
+		required: true,
+		unique: false
 	},
 	hero_id: {
 		type: String,
