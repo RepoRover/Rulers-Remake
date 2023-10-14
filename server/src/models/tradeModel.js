@@ -19,16 +19,28 @@ const tradeSchema = new mongoose.Schema({
 		required: true
 	},
 	give: {
-		type: Array || Number,
-		required: true
+		type: mongoose.Schema.Types.Mixed,
+		required: true,
+		validate: {
+			validator: function (v) {
+				return Array.isArray(v) || typeof v === 'number';
+			},
+			message: (props) => `${props.value} should be either an array or a number.`
+		}
 	},
 	give_gems: {
 		type: Boolean,
 		required: true
 	},
 	take: {
-		type: Array || Number,
-		required: true
+		type: mongoose.Schema.Types.Mixed,
+		required: true,
+		validate: {
+			validator: function (v) {
+				return Array.isArray(v) || typeof v === 'number';
+			},
+			message: (props) => `${props.value} should be either an array or a number.`
+		}
 	},
 	take_gems: {
 		type: Boolean,

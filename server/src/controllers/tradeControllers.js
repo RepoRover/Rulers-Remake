@@ -10,19 +10,15 @@ export const postNewTrade = catchAsync(async (req, res, next) => {
 	const { trade } = req.body;
 	const { user_id, username } = req.user;
 
-	// Check if all the required trade fields exist
 	if (
-		!Array.isArray(trade.give) ||
-		!(typeof trade.give !== 'number') ||
-		!Array.isArray(trade.take) ||
-		!(typeof trade.take !== 'number') ||
+		!(Array.isArray(trade.give) || typeof trade.give === 'number') ||
+		!(Array.isArray(trade.take) || typeof trade.take === 'number') ||
 		typeof trade.give_gems !== 'boolean' ||
 		typeof trade.take_gems !== 'boolean'
 	) {
 		return next(new APIError('Invalid trade info.', 400));
 	}
 
-	// Check if user is trying to exchange gems for gems
 	if (
 		(trade.give_gems === true && trade.take_gems === true) ||
 		(typeof trade.give === 'number' && typeof trade.take === 'number')
@@ -30,9 +26,6 @@ export const postNewTrade = catchAsync(async (req, res, next) => {
 		return next(new APIError("You can't exchange gems for gems.", 400));
 	}
 
-	// Prove user ability to open a trade
-	// if he gives cards, check his ownership rights
-	// if he gives gems, check his gem balance
 	if (Array.isArray(trade.give)) {
 		const ownershipValid = await validateCards(user_id, trade.give);
 		if (!ownershipValid) return next(new APIError("You don't have cards you want to give.", 400));
@@ -41,7 +34,6 @@ export const postNewTrade = catchAsync(async (req, res, next) => {
 		if (!enoughGems) return next(new APIError("You don't have enough gems.", 400));
 	}
 
-	// Check if the requesting hero/-s exists
 	if (Array.isArray(trade.take)) {
 		const validHeroes = await validateHeros(trade.take);
 		if (!validHeroes) return next(new APIError('You want to take invalid hero/-s', 400));
