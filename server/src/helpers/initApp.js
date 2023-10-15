@@ -634,6 +634,7 @@ const legendary = [
 ];
 
 const insertData = async () => {
+	console.log('Start to make main acc');
 	try {
 		const response = await fetch(
 			`http://localhost:3001/api/${process.env.API_VERSION}/auth/signup`,
@@ -699,4 +700,64 @@ const insertData = async () => {
 	}
 };
 
-insertData();
+const postTrade = async (card, access_token) => {
+	let price = 0;
+
+	if (card.rarity === 'Rare') {
+		price = 400;
+	} else if (card.rarity === 'Epic') {
+		price = 1000;
+	} else {
+		price = 2500;
+	}
+
+	const response = await fetch(`http://localhost:3001/api/${process.env.API_VERSION}/trades`, {
+		method: 'POST',
+		headers: {
+			'Content-type': 'application/json',
+			Authorization: `Bearer ${access_token}`
+		},
+		body: JSON.stringify({
+			trade: {
+				give: [card.card_id],
+				give_gems: false,
+				take: price,
+				take_gems: true
+			}
+		})
+	});
+
+	const res = await response.json();
+	console.log(res);
+};
+
+const makeInitTrades = async () => {
+	console.log('Start to make trades');
+	const tokenRes = await fetch(`http://localhost:3001/api/${process.env.API_VERSION}/auth/login`, {
+		method: 'POST',
+		headers: {
+			'Content-type': 'application/json'
+		},
+		body: JSON.stringify({
+			username: process.env.MAIN_ACC_NAME,
+			password: process.env.MAIN_ACC_PWD
+		})
+	});
+
+	const { access_token } = await tokenRes.json();
+	const collectionRes = await fetch(
+		`http://localhost:3001/api/${process.env.API_VERSION}/collections/${process.env.MAIN_ACC_NAME}`
+	);
+	const resJSON = await collectionRes.json();
+	const cards = resJSON.coll;
+
+	await Promise.all(cards.map((card) => postTrade(card, access_token)));
+};
+
+const initApp = async () => {
+	await insertData();
+	await makeInitTrades();
+	process.exit();
+};
+
+initApp();

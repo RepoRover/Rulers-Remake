@@ -8,8 +8,7 @@ const cardSchema = new mongoose.Schema({
 	},
 	card_owner: {
 		type: Object,
-		required: true,
-		unique: false
+		required: true
 	},
 	hero_id: {
 		type: String,
