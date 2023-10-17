@@ -634,7 +634,6 @@ const legendary = [
 ];
 
 const insertData = async () => {
-	console.log('Start to make main acc');
 	try {
 		const response = await fetch(
 			`http://localhost:3001/api/${process.env.API_VERSION}/auth/signup`,
@@ -654,45 +653,59 @@ const insertData = async () => {
 		const res = await response.json();
 
 		if (res.status === 'success') {
-			const userAcc = await User.find({ username: process.env.MAIN_ACC_NAME });
+			const userAcc = await User.findOne({ username: process.env.MAIN_ACC_NAME });
 
-			if (userAcc[0].user_id) {
-				const userId = userAcc[0].user_id;
+			if (userAcc.user_id) {
+				const userId = userAcc.user_id;
 				let cards = [];
 
 				const saveCards = async (heroList, count) => {
 					for (const hero of heroList) {
-						const hero_id = v4();
-						const newHero = new Hero({ hero_id, ...hero });
+						const heroId = v4();
+						const newHero = new Hero({
+							hero_id: heroId,
+							...hero
+						});
 						await newHero.save();
 
 						for (let i = 0; i < count; i++) {
 							const card_id = v4();
 							const newCard = new Card({
 								card_id,
+								in_sale: false,
 								card_owner: {
 									user_id: userId,
 									username: process.env.MAIN_ACC_NAME
 								},
-								hero_id
+								...hero
 							});
 
 							await newCard.save();
 							cards.unshift(card_id);
 						}
 					}
+					return heroList.length * count;
 				};
 
-				await saveCards(rare, 300);
-				await saveCards(epic, 100);
-				await saveCards(legendary, 25);
+				const rareCrds = await saveCards(rare, 300);
+				const epicCards = await saveCards(epic, 100);
+				const legendaryCards = await saveCards(legendary, 25);
 
-				await Collection.updateOne({ user_id: userId }, { $set: { cards: cards } });
+				await Collection.updateOne(
+					{ collection_id: userId },
+					{
+						$set: {
+							cards: cards,
+							rare_cards: rareCrds,
+							epic_cards: epicCards,
+							legendary_cards: legendaryCards
+						}
+					}
+				);
 			} else {
 				console.log('No user found');
 			}
 		} else {
-			console.log('Fail');
 			console.error(res);
 		}
 	} catch (error) {
@@ -728,7 +741,7 @@ const postTrade = async (card, access_token) => {
 	});
 
 	const res = await response.json();
-	console.log(res);
+	console.log(res.trade_id);
 };
 
 const makeInitTrades = async () => {
@@ -746,10 +759,10 @@ const makeInitTrades = async () => {
 
 	const { access_token } = await tokenRes.json();
 	const collectionRes = await fetch(
-		`http://localhost:3001/api/${process.env.API_VERSION}/collections/${process.env.MAIN_ACC_NAME}`
+		`http://localhost:3001/api/${process.env.API_VERSION}/collections/all/${process.env.MAIN_ACC_NAME}`
 	);
 	const resJSON = await collectionRes.json();
-	const cards = resJSON.coll;
+	const { cards } = resJSON.collection;
 
 	await Promise.all(cards.map((card) => postTrade(card, access_token)));
 };

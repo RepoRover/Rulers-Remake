@@ -1,9 +1,10 @@
 import Collection from '../models/collectionModel';
 import Profile from '../models/profileModel';
 import Hero from '../models/heroModel';
+import Card from '../models/cardModel';
 
 export const validateCards = async (tradeOwnerId, cardIdArray) => {
-	const { cards } = await Collection.findOne({ user_id: tradeOwnerId });
+	const { cards } = await Collection.findOne({ collection_id: tradeOwnerId });
 
 	for (const cardId of cardIdArray) {
 		if (!cards.includes(cardId)) {
@@ -14,7 +15,7 @@ export const validateCards = async (tradeOwnerId, cardIdArray) => {
 };
 
 export const validateBalance = async (tradeOwnerId, gemAmount) => {
-	const { gems } = await Profile.findOne({ user_id: tradeOwnerId });
+	const { gems } = await Profile.findOne({ profile_id: tradeOwnerId });
 	if (gems < gemAmount) {
 		return false;
 	}
@@ -29,6 +30,18 @@ export const validateHeros = async (heroIdArray) => {
 		if (!heroIds.includes(heroId)) {
 			return false;
 		}
+	}
+	return true;
+};
+
+export const validateSaleStatus = async (cardIdsArray, tradeAction) => {
+	const cards = await Card.find({ card_id: { $in: cardIdsArray } });
+	const cardsInSale = cards.map((card) => card.in_sale);
+
+	if (tradeAction === 'open' && cardsInSale.includes(true)) {
+		return false;
+	} else if (tradeAction === 'close' && cardsInSale.includes(false)) {
+		return false;
 	}
 	return true;
 };

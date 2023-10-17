@@ -10,7 +10,35 @@ const cardSchema = new mongoose.Schema({
 		type: Object,
 		required: true
 	},
-	hero_id: {
+	in_sale: {
+		type: Boolean,
+		required: true
+	},
+	name: {
+		type: String,
+		required: true
+	},
+	rarity: {
+		type: String,
+		required: true
+	},
+	role: {
+		type: String,
+		required: true
+	},
+	description: {
+		type: String,
+		required: true
+	},
+	front_image_path: {
+		type: String,
+		required: true
+	},
+	back_image_path: {
+		type: String,
+		required: true
+	},
+	hero_link: {
 		type: String,
 		required: true
 	}

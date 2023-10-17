@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 
 const collectionSchema = new mongoose.Schema({
-	user_id: {
+	collection_id: {
 		type: String,
 		required: true,
 		unique: true
@@ -9,6 +9,22 @@ const collectionSchema = new mongoose.Schema({
 	username: {
 		type: String,
 		unique: true,
+		required: true
+	},
+	image_path: {
+		type: String,
+		required: true
+	},
+	legendary_cards: {
+		type: Number,
+		required: true
+	},
+	epic_cards: {
+		type: Number,
+		required: true
+	},
+	rare_cards: {
+		type: Number,
 		required: true
 	},
 	cards: {
