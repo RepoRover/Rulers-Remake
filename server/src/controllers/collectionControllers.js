@@ -2,24 +2,22 @@ import APIError from '../helpers/APIError';
 import catchAsync from '../helpers/catchAsync';
 import Collection from '../models/collectionModel';
 import Card from '../models/cardModel';
-// import Hero from '../models/heroModel';
 import Profile from '../models/profileModel';
 import jwt from 'jsonwebtoken';
-
-// const mostCardsFilterOptions = ['Legendary', 'Epic', 'Rare'];
+import { generateLinks } from '../helpers/linkGenerator';
 
 export const getAllCollections = catchAsync(async (req, res, next) => {
-	const { page = 1, favorites, mostCards } = req.query;
+	const { page = 1, favourites, most_cards, username_search } = req.query;
 
-	const ITEMS_PER_PAGE = 36;
-	const skip = (page - 1) * ITEMS_PER_PAGE;
+	const itemsPerPage = 36;
+	const skip = (page - 1) * itemsPerPage;
 
 	const filters = {};
 
-	if (favorites) {
+	if (favourites) {
 		const token = req.headers.authorization.split(' ')[1];
 		if (!token) {
-			return next(new APIError('No token provided to see favorites.', 400));
+			return next(new APIError('No token provided to see favourites.', 400));
 		}
 		const decoded = jwt.decode(token, process.env.ACCESS_TOKEN_SECRET);
 
@@ -27,12 +25,43 @@ export const getAllCollections = catchAsync(async (req, res, next) => {
 			return next(new APIError('Invalid token.', 403));
 		}
 
-		const { favorite_collections } = await Profile.findOne({ user_id: decoded.user_id });
+		const { favourite_collections } = await Profile.findOne({ profile_id: decoded.user_id });
 
-		filters.collection_id = { $in: favorite_collections };
+		filters.collection_id = { $in: favourite_collections };
 	}
 
-	// res.status(200).json({ collections: collectionsWithCounts });
+	let sort = {};
+	if (most_cards) {
+		switch (most_cards) {
+			case 'legendary':
+				sort.legendary_cards = -1;
+				break;
+			case 'epic':
+				sort.epic_cards = -1;
+				break;
+			case 'rare':
+				sort.rare_cards = -1;
+				break;
+			default:
+				return next(new APIError('Invalid mostCards value.', 400));
+		}
+	}
+
+	if (username_search) {
+		filters.username = username_search;
+	}
+
+	const collections = await Collection.find(filters)
+		.select('-cards')
+		.sort(sort)
+		.skip(skip)
+		.limit(itemsPerPage);
+
+	const totalCollections = await Collection.countDocuments(filters);
+
+	const links = generateLinks(req.baseUrl, req.url, page, totalCollections);
+
+	res.status(200).json({ collections, links });
 });
 
 export const getWholeUserCollection = catchAsync(async (req, res, next) => {

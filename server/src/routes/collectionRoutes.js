@@ -1,6 +1,5 @@
 import { Router } from 'express';
 
-// eslint-disable-next-line no-unused-vars
 import { getAllCollections, getWholeUserCollection } from '../controllers/collectionControllers';
 
 const router = Router();
