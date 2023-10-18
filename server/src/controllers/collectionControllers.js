@@ -2,45 +2,78 @@ import APIError from '../helpers/APIError';
 import catchAsync from '../helpers/catchAsync';
 import Collection from '../models/collectionModel';
 import Card from '../models/cardModel';
-import Hero from '../models/heroModel';
-// import { getAll } from './../helpers/handlerFactory';
+import Profile from '../models/profileModel';
+import jwt from 'jsonwebtoken';
+import { generateLinks } from '../helpers/linkGenerator';
 
 export const getAllCollections = catchAsync(async (req, res, next) => {
-	const page = req.query.page;
-	const limit = 24;
-	const skip = (page - 1) * limit;
+	const { page = 1, favourites, most_cards, username_search } = req.query;
 
-	const collections = await Collection.find().skip(skip).limit(limit);
+	const itemsPerPage = 36;
+	const skip = (page - 1) * itemsPerPage;
 
-	res.status(200).json({ status: 'success', results: collections.length, collections });
+	const filters = {};
+
+	if (favourites) {
+		const token = req.headers.authorization.split(' ')[1];
+		if (!token) {
+			return next(new APIError('No token provided to see favourites.', 400));
+		}
+		const decoded = jwt.decode(token, process.env.ACCESS_TOKEN_SECRET);
+
+		if (!decoded.user_id) {
+			return next(new APIError('Invalid token.', 403));
+		}
+
+		const { favourite_collections } = await Profile.findOne({ profile_id: decoded.user_id });
+
+		filters.collection_id = { $in: favourite_collections };
+	}
+
+	let sort = {};
+	if (most_cards) {
+		switch (most_cards) {
+			case 'legendary':
+				sort.legendary_cards = -1;
+				break;
+			case 'epic':
+				sort.epic_cards = -1;
+				break;
+			case 'rare':
+				sort.rare_cards = -1;
+				break;
+			default:
+				return next(new APIError('Invalid mostCards value.', 400));
+		}
+	}
+
+	if (username_search) {
+		filters.username = username_search;
+	}
+
+	const collections = await Collection.find(filters)
+		.select('-cards')
+		.sort(sort)
+		.skip(skip)
+		.limit(itemsPerPage);
+
+	const totalCollections = await Collection.countDocuments(filters);
+
+	const links = generateLinks(req.baseUrl, req.url, page, totalCollections);
+
+	res.status(200).json({ collections, links });
 });
 
-export const getUserCollection = catchAsync(async (req, res, next) => {
+export const getWholeUserCollection = catchAsync(async (req, res, next) => {
 	const { username } = req.params;
 
 	const collection = await Collection.findOne({ username });
+
 	if (!collection) return next(new APIError('No collection found.', 404));
 
-	let cards = [];
+	const cardIds = collection.cards;
 
-	for (const cardId of collection.cards) {
-		const card = await Card.findOne({ card_id: cardId });
-		cards.push(card);
-	}
+	const cards = await Card.find({ card_id: { $in: cardIds } });
 
-	let heroRarity = [];
-
-	for (const card of cards) {
-		const hero = await Hero.findOne({ hero_id: card.hero_id });
-		heroRarity.push(hero.rarity);
-	}
-
-	const coll = cards.map((card, index) => {
-		return {
-			card_id: card.card_id,
-			rarity: heroRarity[index]
-		};
-	});
-
-	res.status(200).json({ status: 'success', coll });
+	res.status(200).json({ status: 'success', collection: { ...collection._doc, cards } });
 });

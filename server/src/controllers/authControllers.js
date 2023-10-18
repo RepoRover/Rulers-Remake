@@ -70,7 +70,7 @@ export const signup = catchAsync(async (req, res, next) => {
 	});
 
 	const userProfile = new Profile({
-		user_id: userId,
+		profile_id: userId,
 		username,
 		gems: 0,
 		image_path: '/src/assets/default_profile.webp',
@@ -81,9 +81,13 @@ export const signup = catchAsync(async (req, res, next) => {
 	});
 
 	const collection = new Collection({
-		user_id: userId,
+		collection_id: userId,
 		username,
-		cards: []
+		image_path: '/src/assets/default_profile.webp',
+		cards: [],
+		rare_cards: 0,
+		epic_cards: 0,
+		legendary_cards: 0
 	});
 
 	const userSave = newUser.save();
