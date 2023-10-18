@@ -123,7 +123,7 @@ export const refresh = catchAsync(async (req, res, next) => {
 
 	const { accessToken, refreshToken } = signTokens(user_id);
 
-	const updatedUser = await updateUser({ user_id: user_id }, { refresh_token: refreshToken });
+	const updatedUser = await updateUser({ user_id }, { refresh_token: refreshToken });
 
 	if (!updatedUser) {
 		return next(new APIError('Could not refresh tokens.', 500));

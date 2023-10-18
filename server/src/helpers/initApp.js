@@ -672,6 +672,7 @@ const insertData = async () => {
 							const card_id = v4();
 							const newCard = new Card({
 								card_id,
+								hero_id: heroId,
 								in_sale: false,
 								card_owner: {
 									user_id: userId,

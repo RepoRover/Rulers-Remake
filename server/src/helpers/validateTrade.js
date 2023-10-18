@@ -3,8 +3,8 @@ import Profile from '../models/profileModel.js';
 import Hero from '../models/heroModel.js';
 import Card from '../models/cardModel.js';
 
-export const validateCards = async (tradeOwnerId, cardIdArray) => {
-	const { cards } = await Collection.findOne({ collection_id: tradeOwnerId });
+export const validateCards = async (traderId, cardIdArray) => {
+	const { cards } = await Collection.findOne({ collection_id: traderId });
 
 	for (const cardId of cardIdArray) {
 		if (!cards.includes(cardId)) {
@@ -14,8 +14,8 @@ export const validateCards = async (tradeOwnerId, cardIdArray) => {
 	return true;
 };
 
-export const validateBalance = async (tradeOwnerId, gemAmount) => {
-	const { gems } = await Profile.findOne({ profile_id: tradeOwnerId });
+export const validateBalance = async (traderId, gemAmount) => {
+	const { gems } = await Profile.findOne({ profile_id: traderId });
 	if (gems < gemAmount) {
 		return false;
 	}
@@ -44,4 +44,15 @@ export const validateSaleStatus = async (cardIdsArray, tradeAction) => {
 		return false;
 	}
 	return true;
+};
+
+export const validateHerosOwnership = async (traderId, heroIds) => {
+	const allHerosPresent = await Promise.all(
+		heroIds.map(async (hero_id) => {
+			const cardOwned = await Card.findOne({ 'card_owner.user_id': traderId, hero_id });
+			return cardOwned ? true : false;
+		})
+	);
+
+	return allHerosPresent.includes(false) ? false : true;
 };
