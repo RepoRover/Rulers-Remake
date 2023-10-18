@@ -1,5 +1,5 @@
-import Trade from '../../models/tradeModel';
-import Card from '../../models/cardModel';
+import Trade from '../../models/tradeModel.js';
+import Card from '../../models/cardModel.js';
 import { v4 } from 'uuid';
 
 const openTrade = async (trade, user) => {

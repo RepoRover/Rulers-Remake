@@ -1,14 +1,14 @@
 import { v4 } from 'uuid';
-import catchAsync from '../helpers/catchAsync';
-import Trade from './../models/tradeModel';
-import APIError from '../helpers/APIError';
+import catchAsync from '../helpers/catchAsync.js';
+import Trade from './../models/tradeModel.js';
+import APIError from '../helpers/APIError.js';
 import {
 	validateCards,
 	validateBalance,
 	validateHeros,
 	validateSaleStatus
-} from '../helpers/validateTrade';
-import { newTrade } from '../helpers/trade_helpers/tradeFunctions';
+} from '../helpers/validateTrade.js';
+import { newTrade } from '../helpers/trade_helpers/tradeFunctions.js';
 
 export const getAllTrades = catchAsync(async (req, res, next) => {
 	// // Extracting query params

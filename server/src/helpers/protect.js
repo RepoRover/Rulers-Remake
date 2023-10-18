@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
-import catchAsync from './catchAsync';
-import APIError from './APIError';
-import findUser from './user_helpers/findUser';
+import catchAsync from './catchAsync.js';
+import APIError from './APIError.js';
+import findUser from './user_helpers/findUser.js';
 
 const protect = catchAsync(async (req, res, next) => {
 	let accessToken;

@@ -1,16 +1,15 @@
-import APIError from '../helpers/APIError';
-import catchAsync from '../helpers/catchAsync';
-import Collection from '../models/collectionModel';
-import Card from '../models/cardModel';
-import Profile from '../models/profileModel';
+import APIError from '../helpers/APIError.js';
+import catchAsync from '../helpers/catchAsync.js';
+import Collection from '../models/collectionModel.js';
+import Card from '../models/cardModel.js';
+import Profile from '../models/profileModel.js';
 import jwt from 'jsonwebtoken';
-import { generateLinks } from '../helpers/linkGenerator';
+import { generateLinks } from '../helpers/linkGenerator.js';
 
 export const getAllCollections = catchAsync(async (req, res, next) => {
 	const { page = 1, favourites, most_cards, username_search } = req.query;
 
-	const itemsPerPage = 36;
-	const skip = (page - 1) * itemsPerPage;
+	const skip = (page - 1) * process.env.ITEMS_PER_PAGE;
 
 	const filters = {};
 
@@ -32,7 +31,8 @@ export const getAllCollections = catchAsync(async (req, res, next) => {
 
 	let sort = {};
 	if (most_cards) {
-		switch (most_cards) {
+		const most_cards_formatted = most_cards.toLowerCase();
+		switch (most_cards_formatted) {
 			case 'legendary':
 				sort.legendary_cards = -1;
 				break;
@@ -55,7 +55,7 @@ export const getAllCollections = catchAsync(async (req, res, next) => {
 		.select('-cards')
 		.sort(sort)
 		.skip(skip)
-		.limit(itemsPerPage);
+		.limit(process.env.ITEMS_PER_PAGE);
 
 	const totalCollections = await Collection.countDocuments(filters);
 
@@ -64,6 +64,68 @@ export const getAllCollections = catchAsync(async (req, res, next) => {
 	res.status(200).json({ collections, links });
 });
 
+export const getUserCollection = catchAsync(async (req, res, next) => {
+	const { username } = req.params;
+	const { page = 1, rarity, role, favourites } = req.query;
+
+	const skip = (page - 1) * process.env.ITEMS_PER_PAGE;
+
+	const roleMapping = {
+		support: 'Support',
+		tank: 'Tank',
+		burst_dealer: 'Burst Dealer'
+	};
+
+	const rarityMapping = {
+		legendary: 'Legendary',
+		epic: 'Epic',
+		rare: 'Rare'
+	};
+
+	let filters = {};
+	if (role) {
+		const formattedRole = roleMapping[role.toLowerCase()];
+		filters.role = formattedRole;
+	}
+
+	if (rarity) {
+		const rarity_formatted = rarityMapping[rarity.toLowerCase()];
+		filters.rarity = rarity_formatted;
+	}
+
+	if (favourites) {
+		const token = req.headers.authorization.split(' ')[1];
+		if (!token) {
+			return next(new APIError('No token provided to see favourites.', 400));
+		}
+		const decoded = jwt.decode(token, process.env.ACCESS_TOKEN_SECRET);
+
+		if (!decoded.user_id) {
+			return next(new APIError('Invalid token.', 403));
+		}
+
+		const { favourite_cards } = await Profile.findOne({ profile_id: decoded.user_id });
+
+		filters.card_id = { $in: favourite_cards };
+	}
+
+	const collectionDoc = await Collection.findOne({ username });
+	if (!collectionDoc) {
+		return next(new APIError('No collection found.', 404));
+	}
+
+	filters = { 'card_owner.username': username, ...filters };
+
+	const cards = await Card.find(filters).skip(skip).limit(process.env.ITEMS_PER_PAGE);
+
+	const totalCards = await Card.countDocuments(filters);
+
+	const links = generateLinks(req.baseUrl, req.url, page, totalCards);
+
+	res.status(200).json({ cards, links });
+});
+
+// USE FOR APP INIT ONLY
 export const getWholeUserCollection = catchAsync(async (req, res, next) => {
 	const { username } = req.params;
 

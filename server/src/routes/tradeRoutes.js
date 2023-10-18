@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import protect from '../helpers/protect';
-import { deleteTrade, getAllTrades, postNewTrade } from '../controllers/tradeControllers';
+import protect from '../helpers/protect.js';
+import { deleteTrade, getAllTrades, postNewTrade } from '../controllers/tradeControllers.js';
 
 const router = Router();
 

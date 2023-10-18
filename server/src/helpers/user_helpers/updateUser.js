@@ -1,4 +1,4 @@
-import User from '../../models/userModel';
+import User from '../../models/userModel.js';
 
 const updateUser = async (filter, updateData) => {
 	return await User.findOneAndUpdate(filter, updateData, { new: true });

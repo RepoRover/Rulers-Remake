@@ -2,10 +2,10 @@ import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import Card from '../models/cardModel';
-import Hero from '../models/heroModel';
-import Collection from '../models/collectionModel';
-import User from '../models/userModel';
+import Card from '../models/cardModel.js';
+import Hero from '../models/heroModel.js';
+import Collection from '../models/collectionModel.js';
+import User from '../models/userModel.js';
 import { v4 } from 'uuid';
 import { fetch } from 'node-fetch';
 

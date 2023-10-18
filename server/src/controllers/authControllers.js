@@ -1,12 +1,12 @@
-import User from '../models/userModel';
-import Profile from '../models/profileModel';
-import Collection from '../models/collectionModel';
-import catchAsync from '../helpers/catchAsync';
-import APIError from '../helpers/APIError';
+import User from '../models/userModel.js';
+import Profile from '../models/profileModel.js';
+import Collection from '../models/collectionModel.js';
+import catchAsync from '../helpers/catchAsync.js';
+import APIError from '../helpers/APIError.js';
 import bcryptjs from 'bcryptjs';
-import signTokens from '../helpers/signTokens';
-import updateUser from '../helpers/user_helpers/updateUser';
-import findUser from '../helpers/user_helpers/findUser';
+import signTokens from '../helpers/signTokens.js';
+import updateUser from '../helpers/user_helpers/updateUser.js';
+import findUser from '../helpers/user_helpers/findUser.js';
 import { v4 } from 'uuid';
 
 export const checkUserNameAndPwd = (req, res, next) => {
