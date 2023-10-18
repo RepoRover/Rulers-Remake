@@ -2,12 +2,12 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 
-import authRoutes from './routes/authRoutes';
-import collectionRoutes from './routes/collectionRoutes';
-import tradeRoutes from './routes/tradeRoutes';
+import authRoutes from './routes/authRoutes.js';
+import collectionRoutes from './routes/collectionRoutes.js';
+import tradeRoutes from './routes/tradeRoutes.js';
 
-import globalErrorHandler from './controllers/errorController';
-import APIError from './helpers/APIError';
+import globalErrorHandler from './controllers/errorController.js';
+import APIError from './helpers/APIError.js';
 
 const app = express();
 
