@@ -137,7 +137,14 @@ export const favouriteCollectionToggle = catchAsync(async (req, res, next) => {
 	const collection = await Collection.findOne({ username });
 	if (!collection) return next(new APIError('No collection to favourite found.', 404));
 
-	const updatedFavCollections = [collection.collection_id, ...profile.favourite_collections];
+	let updatedFavCollections = [];
+	if (!profile.favourite_collections.includes(collection.collection_id)) {
+		updatedFavCollections = [collection.collection_id, ...profile.favourite_collections];
+	} else {
+		updatedFavCollections = profile.favourite_collections.filter(
+			(collectionId) => collectionId !== collection.collection_id
+		);
+	}
 
 	const updatedProfile = await Profile.updateOne(
 		{ profile_id: user_id },
@@ -146,7 +153,14 @@ export const favouriteCollectionToggle = catchAsync(async (req, res, next) => {
 
 	if (!updatedProfile) return next(new APIError("Couldn't add to favourites.", 500));
 
-	res.status(200).json({ status: 'success' });
+	res
+		.status(200)
+		.json({
+			status: 'success',
+			message: !profile.favourite_collections.includes(collection.collection_id)
+				? `${username}'s collection added to favourites.`
+				: `${username}'s collection removed from favourites.`
+		});
 });
 
 // USE FOR APP INIT ONLY
