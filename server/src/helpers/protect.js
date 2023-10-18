@@ -9,17 +9,14 @@ const protect = catchAsync(async (req, res, next) => {
 		accessToken = req.headers.authorization.split(' ')[1];
 	}
 
-	if (!accessToken) {
-		return next(new APIError('No token provided.', 403));
-	}
+	if (!accessToken) return next(new APIError('No token provided.', 403));
 
 	const payload = jwt.decode(accessToken, process.env.ACCESS_TOKEN_SECRET);
 
-	if (!payload.user_id) {
-		return next(new APIError('Invalid token.', 403));
-	}
+	if (!payload) return next(new APIError('Invalid token.', 403));
 
 	const userId = payload.user_id;
+	if (!userId) return next(new APIError('No user id provided', 400));
 
 	let user;
 
@@ -29,15 +26,11 @@ const protect = catchAsync(async (req, res, next) => {
 		return next(new APIError('No user id included in provided token.', 401));
 	}
 
-	if (!user) {
-		return next(new APIError('No user found with given id.', 403));
-	}
+	if (!user) return next(new APIError('No user found with given id.', 403));
 
 	// eslint-disable-next-line no-unused-vars
 	jwt.verify(user.refresh_token, process.env.REFRESH_TOKEN_SECRET, (err, decoded) => {
-		if (err) {
-			return next(new APIError('Invalid token.', 403));
-		}
+		if (err) return next(new APIError('Invalid token.', 403));
 	});
 	req.user = user;
 	next();

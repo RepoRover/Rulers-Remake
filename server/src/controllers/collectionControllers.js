@@ -61,7 +61,7 @@ export const getAllCollections = catchAsync(async (req, res, next) => {
 
 	const links = generateLinks(req.baseUrl, req.url, page, totalCollections);
 
-	res.status(200).json({ collections, links });
+	res.status(200).json({ status: 'success', collections, links });
 });
 
 export const getUserCollection = catchAsync(async (req, res, next) => {
@@ -122,7 +122,45 @@ export const getUserCollection = catchAsync(async (req, res, next) => {
 
 	const links = generateLinks(req.baseUrl, req.url, page, totalCards);
 
-	res.status(200).json({ cards, links });
+	res.status(200).json({ status: 'success', cards, links });
+});
+
+export const favouriteCollectionToggle = catchAsync(async (req, res, next) => {
+	// User that wants to add collection to favourites
+	const { user_id } = req.user;
+	// User collection to add in favourites
+	const { username } = req.params;
+
+	const profile = await Profile.findOne({ profile_id: user_id });
+	if (!profile) return next(new APIError("Can't find your profile.", 404));
+
+	const collection = await Collection.findOne({ username });
+	if (!collection) return next(new APIError('No collection to favourite found.', 404));
+
+	let updatedFavCollections = [];
+	if (!profile.favourite_collections.includes(collection.collection_id)) {
+		updatedFavCollections = [collection.collection_id, ...profile.favourite_collections];
+	} else {
+		updatedFavCollections = profile.favourite_collections.filter(
+			(collectionId) => collectionId !== collection.collection_id
+		);
+	}
+
+	const updatedProfile = await Profile.updateOne(
+		{ profile_id: user_id },
+		{ $set: { favourite_collections: updatedFavCollections } }
+	);
+
+	if (!updatedProfile) return next(new APIError("Couldn't add to favourites.", 500));
+
+	res
+		.status(200)
+		.json({
+			status: 'success',
+			message: !profile.favourite_collections.includes(collection.collection_id)
+				? `${username}'s collection added to favourites.`
+				: `${username}'s collection removed from favourites.`
+		});
 });
 
 // USE FOR APP INIT ONLY
