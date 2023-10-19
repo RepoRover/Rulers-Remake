@@ -24,6 +24,74 @@ const closeTrade = async (trade_id, user_id, username) => {
 	);
 };
 
+const updateProfiles = async (executor, tradeOwner, trade) => {
+	return {
+		updateExecutorProfile: await Profile.updateOne(
+			{ profile_id: executor.user_id },
+			{ gems: executor.gems - trade.take }
+		),
+		updateTradeOwnerProfile: await Profile.updateOne(
+			{ profile_id: trade.trade_owner.user_id },
+			{ gems: tradeOwner.gems + trade.take }
+		)
+	};
+};
+
+const updateCollections = async (
+	executor,
+	tradeOwner,
+	updatedExecutorCards,
+	updatedTradeOwnerCards,
+	trade,
+	cards
+) => {
+	return {
+		updateExecutorCollection: await Collection.updateOne(
+			{ collection_id: executor.user_id },
+			{
+				cards: updatedExecutorCards,
+				legendary_cards: executor.legendary_cards + cards.legendary_cards,
+				epic_cards: executor.epic_cards + cards.epic_cards,
+				rare_cards: executor.rare_cards + cards.rare_cards
+			}
+		),
+		updateTradeOwnerCollection: await Collection.updateOne(
+			{ collection_id: trade.trade_owner.user_id },
+			{
+				cards: updatedTradeOwnerCards,
+				legendary_cards: tradeOwner.legendary_cards - cards.legendary_cards,
+				epic_cards: tradeOwner.epic_cards - cards.epic_cards,
+				rare_cards: tradeOwner.rare_cards - cards.rare_cards
+			}
+		)
+	};
+};
+
+const getAmountOfRarities = async (cardIds) => {
+	return {
+		legendaryCards: await Card.countDocuments({
+			rarity: 'Legendary',
+			card_id: { $in: cardIds }
+		}),
+		epicCards: await Card.countDocuments({
+			rarity: 'Epic',
+			card_id: { $in: cardIds }
+		}),
+		rareCards: await Card.countDocuments({
+			rarity: 'Rare',
+			card_id: { $in: cardIds }
+		})
+	};
+};
+
+const getRarityAmountDiff = (executorCards, tradeOwnerCards) => {
+	return {
+		legendary_cards_diff: tradeOwnerCards.legendary_cards - executorCards.legendary_cards,
+		epic_cards_diff: tradeOwnerCards.epic_cards - executorCards.epic_cards,
+		rare_cards_diff: tradeOwnerCards.rare_cards - executorCards.rare_cards
+	};
+};
+
 export const getAllTrades = catchAsync(async (req, res, next) => {});
 
 export const postNewTrade = catchAsync(async (req, res, next) => {
@@ -112,24 +180,48 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 			(card_id) => !trade.give.includes(card_id)
 		);
 
-		const updateExecutorProfile = await Profile.updateOne(
-			{ profile_id: user_id },
-			{ gems: executorProfile.gems - trade.take }
+		const updatedExecutorCards = [...trade.give, ...executorCollection.cards];
+
+		const { legendaryCards, epicCards, rareCards } = await getAmountOfRarities(trade.give);
+		const { legendary_cards_diff, epic_cards_diff, rare_cards_diff } = getRarityAmountDiff(
+			{
+				legendary_cards: 0,
+				epic_cards: 0,
+				rare_cards: 0
+			},
+			{
+				legendary_cards: legendaryCards,
+				epic_cards: epicCards,
+				rare_cards: rareCards
+			}
 		);
 
-		const updateTradeOwnerProfile = await Profile.updateOne(
-			{ profile_id: trade.trade_owner.user_id },
-			{ gems: tradeOwnerProfile.gems + trade.take }
+		const { updateExecutorProfile, updateTradeOwnerProfile } = await updateProfiles(
+			{ user_id, gems: executorProfile.gems },
+			{ gems: tradeOwnerProfile.gems },
+			trade
 		);
 
-		const updateExecutorCollection = await Collection.updateOne(
-			{ collection_id: user_id },
-			{ cards: [...trade.give, ...executorCollection.cards] }
-		);
-
-		const updateTradeOwnerCollection = await Collection.updateOne(
-			{ collection_id: trade.trade_owner.user_id },
-			{ cards: updatedTradeOwnerCards }
+		const { updateExecutorCollection, updateTradeOwnerCollection } = await updateCollections(
+			{
+				user_id,
+				legendary_cards: executorCollection.legendary_cards,
+				epic_cards: executorCollection.epic_cards,
+				rare_cards: executorCollection.rare_cards
+			},
+			{
+				legendary_cards: tradeOwnerCollection.legendary_cards,
+				epic_cards: tradeOwnerCollection.epic_cards,
+				rare_cards: tradeOwnerCollection.rare_cards
+			},
+			updatedExecutorCards,
+			updatedTradeOwnerCards,
+			trade,
+			{
+				legendary_cards: legendary_cards_diff,
+				epic_cards: epic_cards_diff,
+				rare_cards: rare_cards_diff
+			}
 		);
 
 		const updateCardsStatus = await Card.updateMany(
