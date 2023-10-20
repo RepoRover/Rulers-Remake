@@ -1,7 +1,7 @@
-import Collection from '../models/collectionModel.js';
-import Profile from '../models/profileModel.js';
-import Hero from '../models/heroModel.js';
-import Card from '../models/cardModel.js';
+import Collection from '../../models/collectionModel.js';
+import Profile from '../../models/profileModel.js';
+import Hero from '../../models/heroModel.js';
+import Card from '../../models/cardModel.js';
 
 export const validateCards = async (traderId, cardIdArray) => {
 	const { cards } = await Collection.findOne({ collection_id: traderId });
