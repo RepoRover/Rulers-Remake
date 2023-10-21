@@ -1,15 +1,11 @@
 import mongoose from 'mongoose';
 
-const tradeSchema = new mongoose.Schema({
+const transactionSchema = new mongoose.Schema({
 	trade_id: {
 		type: String,
 		required: true,
 		unique: true
 	},
-	// trade_status: {
-	// 	type: String,
-	// 	required: true
-	// },
 	trade_owner: {
 		type: Object,
 		required: true
@@ -48,6 +44,6 @@ const tradeSchema = new mongoose.Schema({
 	}
 });
 
-const Trade = mongoose.model('Trade', tradeSchema);
+const Transaction = mongoose.model('Transaction', transactionSchema);
 
-export default Trade;
+export default Transaction;

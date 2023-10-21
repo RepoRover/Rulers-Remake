@@ -2,14 +2,14 @@ import Trade from '../../models/tradeModel.js';
 import Card from '../../models/cardModel.js';
 import Collection from '../../models/collectionModel.js';
 import Profile from '../../models/profileModel.js';
-import Hero from '../../models/heroModel.js';
+import Transaction from '../../models/transactionModel.js';
 import { v4 } from 'uuid';
 
 const openTrade = async (trade, user) => {
 	const tradeId = v4();
 	const newTrade = new Trade({
 		trade_id: tradeId,
-		trade_status: 'open',
+		// trade_status: 'open',
 		trade_owner: {
 			user_id: user.user_id,
 			username: user.username
@@ -27,19 +27,33 @@ const openTrade = async (trade, user) => {
 	return newTrade.trade_id;
 };
 
-export const updateInSaleCardStatus = async (cardIdsArray, tradeAction, user) => {
-	const updateInSaleStatus = await Card.updateMany(
-		{ card_id: { $in: cardIdsArray } },
-		tradeAction === 'open'
-			? { $set: { in_sale: true } }
-			: {
-					$set: {
-						in_sale: false,
-						'card_owner.user_id': user.user_id,
-						'card_owner.username': user.username
-					}
-			  }
-	);
+export const updateInSaleCardStatus = async (
+	cardIdsArrayPrevNotInSale,
+	tradeAction,
+	user,
+	backToSale
+) => {
+	let updateInSaleStatus;
+	if (tradeAction === 'open') {
+		updateInSaleStatus = await Card.updateMany(
+			{ card_id: { $in: cardIdsArrayPrevNotInSale } },
+			{ $set: { in_sale: true } }
+		);
+	} else if (tradeAction === 'close') {
+		updateInSaleStatus = await Card.updateMany(
+			{
+				card_id: { $in: cardIdsArrayPrevNotInSale }
+			},
+			{
+				$set: {
+					in_sale: backToSale ? true : false,
+					'card_owner.user_id': user.user_id,
+					'card_owner.username': user.username
+				}
+			}
+		);
+	}
+
 	if (!updateInSaleStatus) return false;
 	return true;
 };
@@ -60,14 +74,43 @@ export const newTrade = async (trade, user) => {
 };
 
 export const closeTrade = async (trade_id, user_id, username) => {
-	return await Trade.updateOne(
-		{ trade_id },
-		{
-			'trade_accepter.user_id': user_id,
-			'trade_accepter.username': username,
-			trade_status: 'closed'
-		}
-	);
+	const trade = await Trade.findOne({ trade_id });
+
+	const tradeDelte = await Trade.deleteOne({ trade_id });
+	if (!tradeDelte) return false;
+
+	console.log(trade);
+
+	const newTransaction = new Transaction({
+		trade_id: trade.trade_id,
+		give: trade.give,
+		give_gems: trade.give_gems,
+		take: trade.take,
+		take_gems: trade.take_gems,
+		'trade_owner.user_id': trade.trade_owner.user_id,
+		'trade_owner.username': trade.trade_owner.username,
+		'trade_accepter.user_id': user_id,
+		'trade_accepter.username': username
+	});
+
+	console.log(newTransaction);
+
+	const transactionSave = await newTransaction.save();
+	if (!transactionSave) {
+		const tradeReset = new Trade({ ...trade });
+		await tradeReset.save();
+		return false;
+	}
+
+	return true;
+	// return await Trade.updateOne(
+	// 	{ trade_id },
+	// 	{
+	// 		'trade_accepter.user_id': user_id,
+	// 		'trade_accepter.username': username,
+	// 		trade_status: 'closed'
+	// 	}
+	// );
 };
 
 export const updateProfileGems = async (executor, tradeOwner, trade) => {
