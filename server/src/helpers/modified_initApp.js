@@ -685,19 +685,22 @@ const insertData = async () => {
 							cards.unshift(card_id);
 						}
 					}
-					return heroList.length * count;
-				};
+				
 
-				const rareCrds = await saveCards(rare, 300);
-				const epicCards = await saveCards(epic, 100);
-				const legendaryCards = await saveCards(legendary, 25);
+let totalCount = 300 + 100 + 25;  // Sum of the counts of rare, epic, and legendary cards.
+let processedCount = 0;
 
-				await Collection.updateOne(
-					{ collection_id: userId },
-					{
-						$set: {
-							cards: cards,
-							rare_cards: rareCrds,
+const saveCardsAndDisplayProgress = async (cardType, count) => {
+    await saveCards(cardType, count);
+    processedCount += count;
+    let progressPercentage = (processedCount / totalCount) * 100;
+    process.stdout.write(`Inserting Cards: ${progressPercentage.toFixed(2)}% \r`);
+};
+
+await saveCardsAndDisplayProgress(rare, 300);
+await saveCardsAndDisplayProgress(epic, 100);
+await saveCardsAndDisplayProgress(legendary, 25);
+
 							epic_cards: epicCards,
 							legendary_cards: legendaryCards
 						}
@@ -741,26 +744,25 @@ const postTrade = async (card, access_token) => {
 		})
 	});
 
-	const res = await response.json();
-	console.log(res.trade_id);
-};
 
-const makeInitTrades = async () => {
-	console.log('Start to make trades');
-	const tokenRes = await fetch(`http://localhost:3001/api/${process.env.API_VERSION}/auth/login`, {
-		method: 'POST',
-		headers: {
-			'Content-type': 'application/json'
-		},
-		body: JSON.stringify({
-			username: process.env.MAIN_ACC_NAME,
-			password: process.env.MAIN_ACC_PWD
-		})
-	});
 
-	const { access_token } = await tokenRes.json();
-	const collectionRes = await fetch(
-		`http://localhost:3001/api/${process.env.API_VERSION}/collections/all/${process.env.MAIN_ACC_NAME}`
+console.log('Start to make trades');
+const tokenRes = await fetch( ... );  // Retaining previous code to fetch access_token
+const { access_token } = await tokenRes.json();
+const collectionRes = await fetch( ... );  // Retaining previous code to fetch collections
+const resJSON = await collectionRes.json();
+const { cards } = resJSON.collection;
+
+let totalCount = cards.length;
+let processedCount = 0;
+
+await Promise.all(cards.map(async (card) => {
+    await postTrade(card, access_token);
+    processedCount++;
+    let progressPercentage = (processedCount / totalCount) * 100;
+    process.stdout.write(`Making Trades: ${progressPercentage.toFixed(2)}% \r`);
+}));
+
 	);
 	const resJSON = await collectionRes.json();
 	const { cards } = resJSON.collection;

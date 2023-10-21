@@ -153,14 +153,14 @@ export const favouriteCollectionToggle = catchAsync(async (req, res, next) => {
 
 	if (!updatedProfile) return next(new APIError("Couldn't add to favourites.", 500));
 
-	res
-		.status(200)
-		.json({
-			status: 'success',
-			message: !profile.favourite_collections.includes(collection.collection_id)
-				? `${username}'s collection added to favourites.`
-				: `${username}'s collection removed from favourites.`
-		});
+	res.status(200).json({
+		status: 'success',
+		message: `${username}'s collection ${
+			!profile.favourite_collections.includes(collection.collection_id)
+				? 'added to'
+				: 'removed from'
+		} favourites`
+	});
 });
 
 // USE FOR APP INIT ONLY

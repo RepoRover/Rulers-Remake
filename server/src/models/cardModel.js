@@ -6,6 +6,10 @@ const cardSchema = new mongoose.Schema({
 		required: true,
 		unique: true
 	},
+	hero_id: {
+		type: String,
+		required: true
+	},
 	card_owner: {
 		type: Object,
 		required: true

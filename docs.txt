@@ -1,0 +1,170 @@
+Collections: 
+	All collections: 
+		GET /api/v1/collections?page=1&favourites=true&most_cards=legendary&username_search=RepoRover
+      Headers (OPTIONAL):
+        {
+          Authorization: "Bearer access_token"
+        }
+      Response:
+        { 
+          status: 'success', 
+          collections: [
+            {
+            "_id": "65330abb14f15e157d021184",
+            "collection_id": "2f5b8477-4b60-49c5-95dc-dc17ff0f1797",
+            "username": "RepoRover",
+            "image_path": "/src/assets/default_profile.webp",
+            "legendary_cards": 250,
+            "epic_cards": 2000,
+            "rare_cards": 9000,
+            "__v": 0
+            }
+          ],
+          links: {
+            "first": link,
+            "last": link,
+            "prev3": link,
+            "prev2": link,
+            "prev1": link,
+            "next1": link,
+            "next2": link,
+            "next3": link
+          }
+        }
+
+	User collection:
+		GET /api/v1/collections/:username
+      Headers (OPTIONAL):
+        {
+          Authorization: "Bearer access_token"
+        }
+      Response:
+        {
+        "status": "success",
+        "cards": [
+            {
+                "_id": "65330abc4e8d5cc301cb2170",
+                "card_id": "168e4eb4-eaea-412e-a038-b80fed0f2a04",
+                "hero_id": "7f8fb82e-cf06-4c30-b3ee-1313cbbb803d",
+                "card_owner": {
+                    "user_id": "2f5b8477-4b60-49c5-95dc-dc17ff0f1797",
+                    "username": "RepoRover"
+                },
+                "in_sale": true,
+                "name": "Annie",
+                "rarity": "Rare",
+                "role": "Burst Dealer",
+                "description": "Dangerous, yet disarmingly precocious, Annie is a child mage with immense pyromantic power.",
+                "front_image_path": "/src/assets/cards/rare/front/annie.webp",
+                "back_image_path": "/src/assets/cards/rare/back/annie.webp",
+                "hero_link": "https://leagueoflegends.com/en-us/champions/annie/",
+                "__v": 0
+            }
+          ],
+          links: {
+            "first": link,
+            "last": link,
+            "prev3": link,
+            "prev2": link,
+            "prev1": link,
+            "next1": link,
+            "next2": link,
+            "next3": link
+          }
+        }
+
+	Favourite/unfavourite collection:
+		PATCH /api/v1/collections/:username
+      Headers:
+        {
+          Authorization: "Bearer access_token"
+        }
+      Response:
+        {
+			    status: 'success',
+			    message: RepoRover's collection added/removed to/from favourites.
+		    }
+
+
+
+
+Trades:
+	All trades:
+		GET /api/v1/trades
+  
+  Post new trade:
+    POST /api/v1/trades
+      Headers:
+        {
+          Authorization: "Bearer access_token"
+        }
+      Body:
+        {
+          trade: {
+            give: array || number,
+            give_gems: boolean,
+            take:  array || number,
+            take_gems: boolean
+          }
+        }
+      Response:
+        { 
+          status: 'success', 
+          trade_id: tradeID
+        }
+
+  Execute a trade:
+    POST /api/v1/trades/:trade_id
+      Headers:
+        {
+          Authorization: "Bearer access_token"
+        }
+      Response:
+        { 
+          status: 'success'
+        }
+  
+  Delete a trade:
+    DELETE /api/v1/trades/:trade_id
+
+
+
+Auth:
+	Sign up:
+		POST /api/v1/auth/signup
+      Body:
+        {
+          username,
+          password,
+          password_confirm
+        }
+      Response:
+        { 
+          status: 'success', 
+          access_token: accessToken
+        }
+
+  Log in:
+    POST /api/v1/auth/login
+      Body:
+        {
+          username,
+          password
+        }
+      Response:
+        { 
+          status: 'success', 
+          access_token: accessToken
+        }
+
+    Refresh:
+    POST /api/v1/auth/refresh
+      Headers:
+        {
+          Authorization: "Bearer access_token"
+        }
+      Response:
+        { 
+          status: 'success', 
+          access_token: accessToken
+        }

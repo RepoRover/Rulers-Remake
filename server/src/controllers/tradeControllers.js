@@ -1,4 +1,3 @@
-import { v4 } from 'uuid';
 import catchAsync from '../helpers/catchAsync.js';
 import Trade from './../models/tradeModel.js';
 import APIError from '../helpers/APIError.js';
@@ -6,83 +5,40 @@ import {
 	validateCards,
 	validateBalance,
 	validateHeros,
-	validateSaleStatus
-} from '../helpers/validateTrade.js';
-import { newTrade } from '../helpers/trade_helpers/tradeFunctions.js';
+	validateSaleStatus,
+	validateHerosOwnership
+} from '../helpers/trade_helpers/validateTrade.js';
+import {
+	newTrade,
+	closeTrade,
+	updateProfileGems,
+	updateCollectionCards,
+	getAmountOfRarities,
+	getRarityAmountDiff,
+	updateInSaleCardStatus,
+	getUserCardsFromHeroIds
+} from '../helpers/trade_helpers/tradeFunctions.js';
+import Profile from '../models/profileModel.js';
+import Collection from '../models/collectionModel.js';
 
-export const getAllTrades = catchAsync(async (req, res, next) => {
-	// // Extracting query params
-	// const { page = 1, rarity, role, favourites, offerType } = req.query;
-	// // Build the filters based on query params
-	// const filters = {};
-	// if (rarity) filters.rarity = rarity;
-	// if (role) filters.role = role;
-	// if (offerType === 'cards') filters.give_gems = false;
-	// if (offerType === 'gems') filters.give_gems = true;
-	// if (favourites) {
-	// 	// Assuming you have access to logged-in user data
-	// 	const user = await Profile.findById(req.user._id);
-	// 	filters._id = { $in: user.favourite_trades };
-	// }
-	// // Pagination
-	// const limit = 36;
-	// const skip = (Number(page) - 1) * limit;
-	// // Fetching the trades
-	// const trades = await Trade.find(filters).limit(limit).skip(skip);
-	// // Count the total number of trades to calculate total pages
-	// const totalTrades = await Trade.countDocuments(filters);
-	// const totalPages = Math.ceil(totalTrades / limit);
-	// // Build the pagination links
-	// const generateLink = (pageNumber) =>
-	// 	`/trades?page=${pageNumber}${rarity ? `&rarity=${rarity}` : ''}${role ? `&role=${role}` : ''}${
-	// 		favourites ? `&favourites=${favourites}` : ''
-	// 	}${offerType ? `&offerType=${offerType}` : ''}`;
-	// const links = {
-	// 	first: generateLink(1),
-	// 	last: generateLink(totalPages),
-	// 	prev3: page - 3 > 0 ? generateLink(page - 3) : null,
-	// 	prev2: page - 2 > 0 ? generateLink(page - 2) : null,
-	// 	prev1: page - 1 > 0 ? generateLink(page - 1) : null,
-	// 	next1: page + 1 <= totalPages ? generateLink(page + 1) : null,
-	// 	next2: page + 2 <= totalPages ? generateLink(page + 2) : null,
-	// 	next3: page + 3 <= totalPages ? generateLink(page + 3) : null
-	// };
-	// // Sending response
-	// res.json({ trades, links });
-});
+export const getAllTrades = catchAsync(async (req, res, next) => {});
 
 export const postNewTrade = catchAsync(async (req, res, next) => {
 	const { trade } = req.body;
 	const { user_id } = req.user;
 
-	if (
-		!(Array.isArray(trade.give) || typeof trade.give === 'number') ||
-		!(Array.isArray(trade.take) || typeof trade.take === 'number') ||
-		typeof trade.give_gems !== 'boolean' ||
-		typeof trade.take_gems !== 'boolean'
-	) {
-		return next(new APIError('Invalid trade info.', 400));
-	}
-
-	if (
-		(trade.give_gems === true && trade.take_gems === true) ||
-		(typeof trade.give === 'number' && typeof trade.take === 'number')
-	) {
-		return next(new APIError("You can't exchange gems for gems.", 400));
-	}
-
-	if (Array.isArray(trade.give)) {
+	if (!trade.give_gems) {
 		const ownershipValid = await validateCards(user_id, trade.give);
 		if (!ownershipValid) return next(new APIError("You don't have cards you want to give.", 400));
 
 		const cardsAreNotInSale = await validateSaleStatus(trade.give, 'open');
 		if (!cardsAreNotInSale) return next(new APIError('Card/-s are already in sale.', 400));
-	} else if (typeof trade.give === 'number') {
+	} else if (trade.give_gems) {
 		const enoughGems = await validateBalance(user_id, trade.give);
 		if (!enoughGems) return next(new APIError("You don't have enough gems.", 400));
 	}
 
-	if (Array.isArray(trade.take)) {
+	if (!trade.take_gems) {
 		const validHeroes = await validateHeros(trade.take);
 		if (!validHeroes) return next(new APIError('You want to take invalid hero/-s', 400));
 	}
@@ -91,7 +47,316 @@ export const postNewTrade = catchAsync(async (req, res, next) => {
 
 	if (!tradeId) return next(new APIError("Couldn't publish your trade", 500));
 
-	res.status(200).json({ status: 'success', trade_id: tradeId });
+	res.status(201).json({ status: 'success', trade_id: tradeId });
 });
 
-export const deleteTrade = catchAsync(async (req, res, next) => {});
+export const executeTrade = catchAsync(async (req, res, next) => {
+	const { user_id, username } = req.user;
+	const { trade_id } = req.params;
+
+	const trade = await Trade.findOne({ trade_id });
+
+	if (!trade) return next(new APIError('No trade found.', 404));
+	if (trade.trade_owner.user_id === user_id)
+		return next(new APIError("You can't execute your own trades.", 403));
+	// if (trade.trade_status === 'closed') return next(new APIError('Trade already closed.', 403));
+
+	const executorCollection = await Collection.findOne({ collection_id: user_id });
+	if (!executorCollection) return next(new APIError("Can't find your collection.", 404));
+
+	const tradeOwnerCollection = await Collection.findOne({
+		collection_id: trade.trade_owner.user_id
+	});
+	if (!tradeOwnerCollection) return next(new APIError("Can't find your collection.", 404));
+
+	if (!trade.take_gems) {
+		const heroOwnershipValid = await validateHerosOwnership(user_id, trade.take);
+		if (!heroOwnershipValid)
+			return next(new APIError("You don't have needed heros or some of them are in sale.", 400));
+
+		if (trade.give_gems) {
+			// Code to withdraw cards from executor to trade owner
+			// and gems from trade owner to executor
+			const executorProfile = await Profile.findOne({ profile_id: user_id });
+			if (!executorProfile) return next(new APIError("Can't find your profile.", 404));
+
+			const tradeOwnerProfile = await Profile.findOne({ profile_id: trade.trade_owner.user_id });
+			if (!tradeOwnerProfile) return next(new APIError('No trade owner profile found.', 404));
+
+			const chosenCardIds = await getUserCardsFromHeroIds(trade.take, user_id);
+
+			const updatedExecutorCards = executorCollection.cards.filter((cardId) => {
+				!chosenCardIds.includes(cardId);
+			});
+
+			const updatedTradeOwnerCards = [...chosenCardIds, ...tradeOwnerCollection.cards];
+
+			const { legendaryCards, epicCards, rareCards } = await getAmountOfRarities(chosenCardIds);
+
+			const { legendary_cards_diff, epic_cards_diff, rare_cards_diff } = getRarityAmountDiff(
+				{
+					legendary_cards: legendaryCards,
+					epic_cards: epicCards,
+					rare_cards: rareCards
+				},
+				{
+					legendary_cards: 0,
+					epic_cards: 0,
+					rare_cards: 0
+				}
+			);
+
+			const { updateExecutorProfile, updateTradeOwnerProfile } = await updateProfileGems(
+				{ user_id, gems: executorProfile.gems },
+				{ gems: tradeOwnerProfile.gems },
+				trade
+			);
+
+			const { updateExecutorCollection, updateTradeOwnerCollection } = await updateCollectionCards(
+				{
+					user_id,
+					legendary_cards: executorCollection.legendary_cards,
+					epic_cards: executorCollection.epic_cards,
+					rare_cards: executorCollection.rare_cards
+				},
+				{
+					legendary_cards: tradeOwnerCollection.legendary_cards,
+					epic_cards: tradeOwnerCollection.epic_cards,
+					rare_cards: tradeOwnerCollection.rare_cards
+				},
+				updatedExecutorCards,
+				updatedTradeOwnerCards,
+				trade,
+				{
+					legendary_cards: legendary_cards_diff,
+					epic_cards: epic_cards_diff,
+					rare_cards: rare_cards_diff
+				}
+			);
+
+			const updateCardsInfo = await updateInSaleCardStatus(
+				chosenCardIds,
+				'close',
+				trade.trade_owner,
+				false
+			);
+
+			const tradeClosed = await closeTrade(trade_id, user_id, username);
+
+			if (
+				!tradeClosed ||
+				!updateCardsInfo ||
+				!updateTradeOwnerCollection ||
+				!updateExecutorCollection ||
+				!updateTradeOwnerProfile ||
+				!updateExecutorProfile
+			) {
+				// Reset executor profile and collection
+				await Profile.updateOne({ profile_id: user_id }, { ...executorProfile });
+				await Collection.updateOne({ collection_id: user_id }, { ...executorCollection });
+
+				// Reset trade owner profile and collection
+				await Profile.updateOne(
+					{ profile_id: trade.trade_owner.user_id },
+					{ ...tradeOwnerProfile }
+				);
+				await Collection.updateOne(
+					{ collection_id: trade.trade_owner.user_id },
+					{ ...tradeOwnerCollection }
+				);
+
+				await updateInSaleCardStatus(chosenCardIds, 'close', req.user, false);
+
+				return next(new APIError('Trade failed.', 500));
+			}
+		} else {
+			// Code to withdraw cards from executor from take field
+			// and cards from trade owner from give field
+			const chosenCardIds = await getUserCardsFromHeroIds(trade.take, user_id);
+
+			// Exclude cards that trade owner takes from executor
+			let updatedExecutorCards = executorCollection.cards.filter((cardId) => {
+				!chosenCardIds.includes(cardId);
+			});
+
+			// Add cards trade owner gives in the trade
+			updatedExecutorCards = [...trade.give, ...updatedExecutorCards];
+
+			let updatedTradeOwnerCards = tradeOwnerCollection.cards.filter(
+				(cardId) => !trade.give.includes(cardId)
+			);
+
+			updatedTradeOwnerCards = [...chosenCardIds, ...updatedTradeOwnerCards];
+
+			const tradeOwnerAmountOfRarities = await getAmountOfRarities(trade.give);
+			const executorAmountOfRarities = await getAmountOfRarities(chosenCardIds);
+
+			const { legendary_cards_diff, epic_cards_diff, rare_cards_diff } = getRarityAmountDiff(
+				{
+					legendary_cards: executorAmountOfRarities.legendaryCards,
+					epic_cards: executorAmountOfRarities.epicCards,
+					rare_cards: executorAmountOfRarities.rareCards
+				},
+				{
+					legendary_cards: tradeOwnerAmountOfRarities.legendaryCards,
+					epic_cards: tradeOwnerAmountOfRarities.epicCards,
+					rare_cards: tradeOwnerAmountOfRarities.rareCards
+				}
+			);
+
+			const { updateExecutorCollection, updateTradeOwnerCollection } = await updateCollectionCards(
+				{
+					user_id,
+					legendary_cards: executorCollection.legendary_cards,
+					epic_cards: executorCollection.epic_cards,
+					rare_cards: executorCollection.rare_cards
+				},
+				{
+					legendary_cards: tradeOwnerCollection.legendary_cards,
+					epic_cards: tradeOwnerCollection.epic_cards,
+					rare_cards: tradeOwnerCollection.rare_cards
+				},
+				updatedExecutorCards,
+				updatedTradeOwnerCards,
+				trade,
+				{
+					legendary_cards: legendary_cards_diff,
+					epic_cards: epic_cards_diff,
+					rare_cards: rare_cards_diff
+				}
+			);
+
+			const updateGivenCardsInfo = await updateInSaleCardStatus(
+				trade.give,
+				'close',
+				req.user,
+				false
+			);
+			const updateTakenCardsInfo = await updateInSaleCardStatus(
+				chosenCardIds,
+				'close',
+				trade.trade_owner,
+				false
+			);
+
+			const tradeClosed = await closeTrade(trade_id, user_id, username);
+
+			if (
+				!tradeClosed ||
+				!updateGivenCardsInfo ||
+				!updateTakenCardsInfo ||
+				!updateTradeOwnerCollection ||
+				!updateExecutorCollection
+			) {
+				// Reset executor profile and collection
+				await Collection.updateOne({ collection_id: user_id }, { ...executorCollection });
+
+				// Reset trade owner profile and collection
+				await Collection.updateOne(
+					{ collection_id: trade.trade_owner.user_id },
+					{ ...tradeOwnerCollection }
+				);
+
+				await updateInSaleCardStatus(trade.give, 'close', trade.trade_owner, true);
+				await updateInSaleCardStatus(chosenCardIds, 'close', req.user, false);
+
+				return next(new APIError('Trade failed.', 500));
+			}
+		}
+	} else if (trade.take_gems) {
+		const enoughGems = await validateBalance(user_id, trade.take);
+		if (!enoughGems) return next(new APIError("You don't have enough gems.", 400));
+
+		// Code to withdraw cards from trade owner from give field
+		// and withdraw gems from executor to trade owner
+
+		const executorProfile = await Profile.findOne({ profile_id: user_id });
+		if (!executorProfile) return next(new APIError("Can't find your profile.", 404));
+
+		const tradeOwnerProfile = await Profile.findOne({ profile_id: trade.trade_owner.user_id });
+		if (!tradeOwnerProfile) return next(new APIError('No trade owner profile found.', 404));
+
+		const updatedTradeOwnerCards = tradeOwnerCollection.cards.filter(
+			(card_id) => !trade.give.includes(card_id)
+		);
+
+		const updatedExecutorCards = [...trade.give, ...executorCollection.cards];
+
+		const { legendaryCards, epicCards, rareCards } = await getAmountOfRarities(trade.give);
+		const { legendary_cards_diff, epic_cards_diff, rare_cards_diff } = getRarityAmountDiff(
+			{
+				legendary_cards: 0,
+				epic_cards: 0,
+				rare_cards: 0
+			},
+			{
+				legendary_cards: legendaryCards,
+				epic_cards: epicCards,
+				rare_cards: rareCards
+			}
+		);
+
+		const { updateExecutorProfile, updateTradeOwnerProfile } = await updateProfileGems(
+			{ user_id, gems: executorProfile.gems },
+			{ gems: tradeOwnerProfile.gems },
+			trade
+		);
+
+		const { updateExecutorCollection, updateTradeOwnerCollection } = await updateCollectionCards(
+			{
+				user_id,
+				legendary_cards: executorCollection.legendary_cards,
+				epic_cards: executorCollection.epic_cards,
+				rare_cards: executorCollection.rare_cards
+			},
+			{
+				legendary_cards: tradeOwnerCollection.legendary_cards,
+				epic_cards: tradeOwnerCollection.epic_cards,
+				rare_cards: tradeOwnerCollection.rare_cards
+			},
+			updatedExecutorCards,
+			updatedTradeOwnerCards,
+			trade,
+			{
+				legendary_cards: legendary_cards_diff,
+				epic_cards: epic_cards_diff,
+				rare_cards: rare_cards_diff
+			}
+		);
+
+		const updateCardsInfo = await updateInSaleCardStatus(trade.give, 'close', req.user, false);
+
+		const tradeClosed = await closeTrade(trade_id, user_id, username);
+
+		if (
+			!tradeClosed ||
+			!updateCardsInfo ||
+			!updateTradeOwnerCollection ||
+			!updateExecutorCollection ||
+			!updateTradeOwnerProfile ||
+			!updateExecutorProfile
+		) {
+			// Reset executor profile and collection
+			await Profile.updateOne({ profile_id: user_id }, { ...executorProfile });
+			await Collection.updateOne({ collection_id: user_id }, { ...executorCollection });
+
+			// Reset trade owner profile and collection
+			await Profile.updateOne({ profile_id: trade.trade_owner.user_id }, { ...tradeOwnerProfile });
+			await Collection.updateOne(
+				{ collection_id: trade.trade_owner.user_id },
+				{ ...tradeOwnerCollection }
+			);
+
+			await updateInSaleCardStatus(trade.give, 'close', trade.trade_owner, true);
+
+			return next(new APIError('Trade failed.', 500));
+		}
+	}
+
+	res.status(201).json({ status: 'success' });
+});
+
+export const deleteTrade = catchAsync(async (req, res, next) => {
+	// const { user_id } = req.user;
+	// const { trade_id } = req.params;
+});
