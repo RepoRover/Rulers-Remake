@@ -22,8 +22,6 @@ import {
 import Profile from '../models/profileModel.js';
 import Collection from '../models/collectionModel.js';
 
-export const getAllTrades = catchAsync(async (req, res, next) => {});
-
 export const postNewTrade = catchAsync(async (req, res, next) => {
 	const { trade } = req.body;
 	const { user_id } = req.user;
@@ -402,3 +400,9 @@ export const deleteTrade = catchAsync(async (req, res, next) => {
 
 	res.status(200).json({ status: 'success' });
 });
+
+export const getDirectTrades = catchAsync(async (req, res, next) => {});
+
+export const getAllTrades = catchAsync(async (req, res, next) => {});
+
+export const favouriteTrade = catchAsync(async (req, res, next) => {});

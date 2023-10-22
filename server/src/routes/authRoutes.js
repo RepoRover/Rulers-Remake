@@ -4,9 +4,7 @@ import {
 	signup,
 	checkUserNameAndPwd,
 	logoutAll,
-	refresh,
-	changePassword,
-	changeUsername
+	refresh
 } from './../controllers/authControllers.js';
 import protect from '../helpers/protect.js';
 
@@ -16,7 +14,5 @@ router.route('/login').post(checkUserNameAndPwd, login);
 router.route('/signup').post(checkUserNameAndPwd, signup);
 router.route('/refresh').post(protect, refresh);
 router.route('/logout-all').post(protect, logoutAll);
-router.route('/new-pwd').post(protect, changePassword);
-router.route('/new-name').post(protect, changeUsername);
 
 export default router;
