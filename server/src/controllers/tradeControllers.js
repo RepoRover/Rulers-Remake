@@ -16,7 +16,8 @@ import {
 	getAmountOfRarities,
 	getRarityAmountDiff,
 	updateInSaleCardStatus,
-	getUserCardsFromHeroIds
+	getUserCardsFromHeroIds,
+	updateHeldGemsBalance
 } from '../helpers/trade_helpers/tradeFunctions.js';
 import Profile from '../models/profileModel.js';
 import Collection from '../models/collectionModel.js';
@@ -27,25 +28,37 @@ export const postNewTrade = catchAsync(async (req, res, next) => {
 	const { trade } = req.body;
 	const { user_id } = req.user;
 
-	if (!trade.give_gems) {
-		const ownershipValid = await validateCards(user_id, trade.give);
-		if (!ownershipValid) return next(new APIError("You don't have cards you want to give.", 400));
-
-		const cardsAreNotInSale = await validateSaleStatus(trade.give, 'open');
-		if (!cardsAreNotInSale) return next(new APIError('Card/-s are already in sale.', 400));
-	} else if (trade.give_gems) {
-		const enoughGems = await validateBalance(user_id, trade.give);
-		if (!enoughGems) return next(new APIError("You don't have enough gems.", 400));
-	}
-
 	if (!trade.take_gems) {
 		const validHeroes = await validateHeros(trade.take);
 		if (!validHeroes) return next(new APIError('You want to take invalid hero/-s', 400));
 	}
 
+	if (!trade.give_gems) {
+		const ownershipValid = await validateCards(user_id, trade.give);
+		if (!ownershipValid) return next(new APIError("You don't have cards you want to give.", 400));
+
+		const cardsAreNotInSale = await validateSaleStatus(trade.give, 'open');
+		if (!cardsAreNotInSale) return next(new APIError('Card/-s already in sale.', 400));
+	} else if (trade.give_gems) {
+		const enoughGems = await validateBalance(user_id, trade.give);
+		if (!enoughGems) return next(new APIError("You don't have enough gems.", 400));
+
+		const userProfile = await Profile.findOne({ profile_id: user_id });
+
+		const updateHoldGems = await Profile.updateOne(
+			{ profile_id: user_id },
+			{
+				gems_available: userProfile.gems_available - trade.give,
+				gems_held: userProfile.gems_held + trade.give
+			}
+		);
+
+		if (!updateHoldGems) return next(new APIError("Couldn't publish your trade.", 500));
+	}
+
 	const tradeId = await newTrade(trade, req.user);
 
-	if (!tradeId) return next(new APIError("Couldn't publish your trade", 500));
+	if (!tradeId) return next(new APIError("Couldn't publish your trade.", 500));
 
 	res.status(201).json({ status: 'success', trade_id: tradeId });
 });
@@ -59,7 +72,6 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 	if (!trade) return next(new APIError('No trade found.', 404));
 	if (trade.trade_owner.user_id === user_id)
 		return next(new APIError("You can't execute your own trades.", 403));
-	// if (trade.trade_status === 'closed') return next(new APIError('Trade already closed.', 403));
 
 	const executorCollection = await Collection.findOne({ collection_id: user_id });
 	if (!executorCollection) return next(new APIError("Can't find your collection.", 404));
@@ -107,8 +119,11 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 			);
 
 			const { updateExecutorProfile, updateTradeOwnerProfile } = await updateProfileGems(
-				{ user_id, gems: executorProfile.gems },
-				{ gems: tradeOwnerProfile.gems },
+				{ user_id, gems_available: executorProfile.gems_available },
+				{
+					gems_available: tradeOwnerProfile.gems_available,
+					gems_held: tradeOwnerProfile.gems_held
+				},
 				trade
 			);
 
@@ -297,8 +312,8 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 		);
 
 		const { updateExecutorProfile, updateTradeOwnerProfile } = await updateProfileGems(
-			{ user_id, gems: executorProfile.gems },
-			{ gems: tradeOwnerProfile.gems },
+			{ user_id, gems_available: executorProfile.gems_available },
+			{ gems_available: tradeOwnerProfile.gems_available, gems_held: tradeOwnerProfile.gems_held },
 			trade
 		);
 
@@ -357,6 +372,33 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 });
 
 export const deleteTrade = catchAsync(async (req, res, next) => {
-	// const { user_id } = req.user;
-	// const { trade_id } = req.params;
+	const { user_id } = req.user;
+	const { trade_id } = req.params;
+
+	const trade = await Trade.findOne({ trade_id });
+	if (!trade) return next(new APIError('No trade found.', 404));
+
+	if (trade.trade_owner.user_id !== user_id)
+		return next(new APIError("You can't delete this trade.", 401));
+
+	let cardInSaleStatusUpdated = null;
+	let heldBalanceUpdated = null;
+	if (!trade.give_gems) {
+		cardInSaleStatusUpdated = await updateInSaleCardStatus(trade.give, 'close', req.user, false);
+	} else {
+		heldBalanceUpdated = await updateHeldGemsBalance(user_id, trade, 'close');
+	}
+
+	const tradeDeleted = await Trade.deleteOne({ trade_id });
+
+	if (!tradeDeleted || (!cardInSaleStatusUpdated && !heldBalanceUpdated)) {
+		if (!cardInSaleStatusUpdated && !trade.give_gems) {
+			await updateInSaleCardStatus(trade.give, 'open');
+		} else if (!heldBalanceUpdated && trade.give_gems) {
+			await updateHeldGemsBalance(user_id, trade, 'open');
+		}
+		return next(new APIError("Couldn't delete your trade.", 500));
+	}
+
+	res.status(200).json({ status: 'success' });
 });

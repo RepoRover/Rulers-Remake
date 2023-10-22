@@ -168,3 +168,38 @@ Auth:
           status: 'success', 
           access_token: accessToken
         }
+
+    New password:
+    POST /api/v1/auth/new-pwd
+      Headers:
+        {
+          Authorization: "Bearer access_token"
+        }
+      Body:
+        {
+          current_password: pwd,
+          new_password: new pwd,
+          new_password_confirm: new pwd
+        }
+      Response:
+        { 
+          status: 'success',
+          message: 'Password changed.'
+        }
+
+    New username:
+    POST /api/v1/auth/new-name
+      Headers:
+        {
+          Authorization: "Bearer access_token"
+        }
+      Body:
+        {
+          current_password: pwd,
+          new_name: new Name,
+        }
+      Response:
+        { 
+          status: 'success',
+          message: 'Username changed.'
+        }

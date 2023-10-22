@@ -27,22 +27,17 @@ const openTrade = async (trade, user) => {
 	return newTrade.trade_id;
 };
 
-export const updateInSaleCardStatus = async (
-	cardIdsArrayPrevNotInSale,
-	tradeAction,
-	user,
-	backToSale
-) => {
+export const updateInSaleCardStatus = async (cardIds, tradeAction, user, backToSale) => {
 	let updateInSaleStatus;
 	if (tradeAction === 'open') {
 		updateInSaleStatus = await Card.updateMany(
-			{ card_id: { $in: cardIdsArrayPrevNotInSale } },
+			{ card_id: { $in: cardIds } },
 			{ $set: { in_sale: true } }
 		);
 	} else if (tradeAction === 'close') {
 		updateInSaleStatus = await Card.updateMany(
 			{
-				card_id: { $in: cardIdsArrayPrevNotInSale }
+				card_id: { $in: cardIds }
 			},
 			{
 				$set: {
@@ -79,8 +74,6 @@ export const closeTrade = async (trade_id, user_id, username) => {
 	const tradeDelte = await Trade.deleteOne({ trade_id });
 	if (!tradeDelte) return false;
 
-	console.log(trade);
-
 	const newTransaction = new Transaction({
 		trade_id: trade.trade_id,
 		give: trade.give,
@@ -93,8 +86,6 @@ export const closeTrade = async (trade_id, user_id, username) => {
 		'trade_accepter.username': username
 	});
 
-	console.log(newTransaction);
-
 	const transactionSave = await newTransaction.save();
 	if (!transactionSave) {
 		const tradeReset = new Trade({ ...trade });
@@ -103,25 +94,33 @@ export const closeTrade = async (trade_id, user_id, username) => {
 	}
 
 	return true;
-	// return await Trade.updateOne(
-	// 	{ trade_id },
-	// 	{
-	// 		'trade_accepter.user_id': user_id,
-	// 		'trade_accepter.username': username,
-	// 		trade_status: 'closed'
-	// 	}
-	// );
 };
 
 export const updateProfileGems = async (executor, tradeOwner, trade) => {
+	let tradeOwnerUpdateObject = {};
+
+	if (trade.give_gems) {
+		tradeOwnerUpdateObject = {
+			gems_held: tradeOwner.gems_held - trade.give
+		};
+	} else {
+		tradeOwnerUpdateObject = {
+			gems_available: tradeOwner.gems_available + trade.take
+		};
+	}
+
 	return {
 		updateExecutorProfile: await Profile.updateOne(
 			{ profile_id: executor.user_id },
-			{ gems: trade.give_gems ? executor.gems + trade.give : executor.gems - trade.take }
+			{
+				gems_available: trade.give_gems
+					? executor.gems_available + trade.give
+					: executor.gems_available - trade.take
+			}
 		),
 		updateTradeOwnerProfile: await Profile.updateOne(
 			{ profile_id: trade.trade_owner.user_id },
-			{ gems: trade.give_gems ? tradeOwner.gems - trade.give : tradeOwner.gems + trade.take }
+			tradeOwnerUpdateObject
 		)
 	};
 };
@@ -208,4 +207,25 @@ export const getUserCardsFromHeroIds = async (heroIds, userId) => {
 	}
 
 	return cardIds;
+};
+
+export const updateHeldGemsBalance = async (user_id, trade, tradeAction) => {
+	const userProfile = await Profile.findOne({ profile_id: user_id });
+
+	const profileUpdated = await Profile.updateOne(
+		{ profile_id: user_id },
+		{
+			gems_held:
+				tradeAction === 'open'
+					? userProfile.gems_held + trade.give
+					: userProfile.gems_held - trade.give,
+			gems_available:
+				tradeAction === 'open'
+					? userProfile.gems_available - trade.give
+					: userProfile.gems_available + trade.give
+		}
+	);
+
+	if (!profileUpdated) return false;
+	return true;
 };

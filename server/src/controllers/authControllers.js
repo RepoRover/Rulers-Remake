@@ -72,7 +72,8 @@ export const signup = catchAsync(async (req, res, next) => {
 	const userProfile = new Profile({
 		profile_id: userId,
 		username,
-		gems: 0,
+		gems_available: 0,
+		gems_held: 0,
 		image_path: '/src/assets/default_profile.webp',
 		free_gem_sets: 5,
 		favourite_trades: [],
@@ -156,7 +157,7 @@ export const changePassword = catchAsync(async (req, res, next) => {
 
 	if (!updatedUser) return next(new APIError('Something went wrong.', 500));
 
-	res.status(200).json({ status: 'success' });
+	res.status(200).json({ status: 'success', message: 'Password changed.' });
 });
 
 export const changeUsername = catchAsync(async (req, res, next) => {
@@ -181,5 +182,7 @@ export const changeUsername = catchAsync(async (req, res, next) => {
 
 	if (!updatedUser) return next(new APIError('Something went wrong.', 500));
 
-	res.status(200).json({ status: 'success' });
+	res.status(200).json({ status: 'success', message: 'Username changed.' });
 });
+
+export const accountDelete = catchAsync(async (req, res, next) => {});

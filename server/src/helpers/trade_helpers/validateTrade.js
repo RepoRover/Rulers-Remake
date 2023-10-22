@@ -16,8 +16,8 @@ export const validateCards = async (traderId, cardIdArray) => {
 };
 
 export const validateBalance = async (traderId, gemAmount) => {
-	const { gems } = await Profile.findOne({ profile_id: traderId });
-	if (gems < gemAmount) {
+	const { gems_available } = await Profile.findOne({ profile_id: traderId });
+	if (gems_available < gemAmount) {
 		return false;
 	}
 	return true;

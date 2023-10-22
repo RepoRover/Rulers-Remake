@@ -11,7 +11,11 @@ const profileSchema = new mongoose.Schema({
 		unique: true,
 		required: true
 	},
-	gems: {
+	gems_available: {
+		type: Number,
+		required: true
+	},
+	gems_held: {
 		type: Number,
 		required: true
 	},
