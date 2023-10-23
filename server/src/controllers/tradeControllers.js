@@ -41,6 +41,14 @@ export const postNewTrade = catchAsync(async (req, res, next) => {
 		const enoughGems = await validateBalance(user_id, trade.give);
 		if (!enoughGems) return next(new APIError("You don't have enough gems.", 400));
 
+		if (trade.trade_accepter.user_id) {
+			const tradeAccepterProfile = await Profile.findOne({
+				profile_id: trade.trade_accepter.user_id
+			});
+			if (!tradeAccepterProfile)
+				return next(new APIError('No user to accept your trade found.', 404));
+		}
+
 		const userProfile = await Profile.findOne({ profile_id: user_id });
 
 		const updateHoldGems = await Profile.updateOne(
@@ -70,6 +78,9 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 	if (!trade) return next(new APIError('No trade found.', 404));
 	if (trade.trade_owner.user_id === user_id)
 		return next(new APIError("You can't execute your own trades.", 403));
+
+	if (trade.trade_accepter.user_id !== null && user_id !== trade.trade_accepter.user_id)
+		return next(new APIError("You can't execute this trade.", 401));
 
 	const executorCollection = await Collection.findOne({ collection_id: user_id });
 	if (!executorCollection) return next(new APIError("Can't find your collection.", 404));
@@ -188,9 +199,9 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 			const chosenCardIds = await getUserCardsFromHeroIds(trade.take, user_id);
 
 			// Exclude cards that trade owner takes from executor
-			let updatedExecutorCards = executorCollection.cards.filter((cardId) => {
-				!chosenCardIds.includes(cardId);
-			});
+			let updatedExecutorCards = executorCollection.cards.filter(
+				(cardId) => !chosenCardIds.includes(cardId)
+			);
 
 			// Add cards trade owner gives in the trade
 			updatedExecutorCards = [...trade.give, ...updatedExecutorCards];
@@ -401,8 +412,45 @@ export const deleteTrade = catchAsync(async (req, res, next) => {
 	res.status(200).json({ status: 'success' });
 });
 
-export const getDirectTrades = catchAsync(async (req, res, next) => {});
+export const favouriteTrade = catchAsync(async (req, res, next) => {
+	// User that wants to add collection to favourites
+	const { user_id } = req.user;
+	// User collection to add in favourites
+	const { trade_id } = req.params;
+
+	const profile = await Profile.findOne({ profile_id: user_id });
+	if (!profile) return next(new APIError("Can't find your profile.", 404));
+
+	const trade = await Trade.findOne({ trade_id });
+	if (!trade) return next(new APIError('No trade to favourite found.', 404));
+
+	if (user_id !== trade.trade_accepter.user_id)
+		return next(new APIError('You can favourite direct trades only.', 401));
+
+	let updatedFavTrades = [];
+	if (!profile.favourite_trades.includes(trade.trade_id)) {
+		updatedFavTrades = [trade.trade_id, ...profile.favourite_trades];
+	} else {
+		updatedFavTrades = profile.favourite_trades.filter((tradeId) => tradeId !== trade.trade_id);
+	}
+
+	const updatedProfile = await Profile.updateOne(
+		{ profile_id: user_id },
+		{ $set: { favourite_trades: updatedFavTrades } }
+	);
+
+	if (!updatedProfile) return next(new APIError("Couldn't add to favourites.", 500));
+
+	res.status(200).json({
+		status: 'success',
+		message: `Trade ${
+			!profile.favourite_trades.includes(trade.trade_id) ? 'added to' : 'removed from'
+		} favourites.`
+	});
+});
+
+export const getDirectTrades = catchAsync(async (req, res, next) => {
+	const { user_id } = req.user;
+});
 
 export const getAllTrades = catchAsync(async (req, res, next) => {});
-
-export const favouriteTrade = catchAsync(async (req, res, next) => {});

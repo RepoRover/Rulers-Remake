@@ -6,6 +6,7 @@ import authRoutes from './routes/authRoutes.js';
 import collectionRoutes from './routes/collectionRoutes.js';
 import tradeRoutes from './routes/tradeRoutes.js';
 import userRoutes from './routes/userRoutes.js';
+import profileRoutes from './routes/profileRoutes.js';
 
 import globalErrorHandler from './controllers/errorController.js';
 import APIError from './helpers/APIError.js';
@@ -20,7 +21,8 @@ if (process.env.ENV === 'dev') app.use(morgan('dev'));
 app.use(`/api/${process.env.API_VERSION}/auth`, authRoutes);
 app.use(`/api/${process.env.API_VERSION}/collections`, collectionRoutes);
 app.use(`/api/${process.env.API_VERSION}/trades`, tradeRoutes);
-app.use(`/api/${process.env.API_VERSION}/:username`, userRoutes);
+app.use(`/api/${process.env.API_VERSION}/me`, userRoutes);
+app.use(`/api/${process.env.API_VERSION}/:username`, profileRoutes);
 
 app.all('*', (req, res, next) => {
 	next(new APIError(`Can't find ${req.originalUrl} on this server!`, 404));

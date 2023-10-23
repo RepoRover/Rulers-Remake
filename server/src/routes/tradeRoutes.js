@@ -5,7 +5,8 @@ import {
 	getAllTrades,
 	postNewTrade,
 	executeTrade,
-	getDirectTrades
+	getDirectTrades,
+	favouriteTrade
 } from '../controllers/tradeControllers.js';
 
 import { validateTrade } from './../helpers/trade_helpers/validateTrade.js';
@@ -13,7 +14,11 @@ import { validateTrade } from './../helpers/trade_helpers/validateTrade.js';
 const router = Router();
 
 router.route('/').get(getAllTrades).post(protect, validateTrade, postNewTrade);
-router.route('/:trade_id').post(protect, executeTrade).delete(protect, deleteTrade);
+router
+	.route('/:trade_id')
+	.post(protect, executeTrade)
+	.delete(protect, deleteTrade)
+	.patch(protect, favouriteTrade);
 router.route('/direct-trades').get(protect, getDirectTrades);
 
 export default router;

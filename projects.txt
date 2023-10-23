@@ -1,3 +1,5 @@
 Header is going to get more and more blurry with scrolling
 When menu is open, blur the whole page
 On the main page card trading choise is changing from gems to cards and so on
+
+User can favourite direct trades only!

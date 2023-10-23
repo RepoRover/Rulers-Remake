@@ -77,7 +77,7 @@ export const validateHerosOwnership = async (traderId, heroIds) => {
 };
 
 export const validateTrade = (req, res, next) => {
-	const { give, give_gems, take, take_gems } = req.body.trade;
+	const { give, give_gems, take, take_gems, trade_accepter } = req.body.trade;
 
 	if (
 		(give_gems && take_gems) ||
@@ -86,7 +86,8 @@ export const validateTrade = (req, res, next) => {
 		(typeof give === 'number' && give_gems !== true) ||
 		(Array.isArray(give) && typeof take !== 'number' && !Array.isArray(take)) ||
 		(typeof give === 'number' && !Array.isArray(take)) ||
-		typeof take_gems !== 'boolean'
+		typeof take_gems !== 'boolean' ||
+		trade_accepter.constructor !== Object
 	) {
 		return next(new APIError('Invalid trade info.', 400));
 	}

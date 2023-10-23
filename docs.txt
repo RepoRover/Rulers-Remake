@@ -104,7 +104,11 @@ Trades:
             give: array || number,
             give_gems: boolean,
             take:  array || number,
-            take_gems: boolean
+            take_gems: boolean,
+            "trade_accepter": {
+              "user_id": null,
+              "username": null
+            } 
           }
         }
       Response:

@@ -9,14 +9,9 @@ const openTrade = async (trade, user) => {
 	const tradeId = v4();
 	const newTrade = new Trade({
 		trade_id: tradeId,
-		// trade_status: 'open',
 		trade_owner: {
 			user_id: user.user_id,
 			username: user.username
-		},
-		trade_accepter: {
-			user_id: null,
-			username: null
 		},
 		...trade
 	});

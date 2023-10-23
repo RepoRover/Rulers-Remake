@@ -736,7 +736,11 @@ const postTrade = async (card, access_token) => {
 				give: [card.card_id],
 				give_gems: false,
 				take: price,
-				take_gems: true
+				take_gems: true,
+				trade_accepter: {
+					user_id: null,
+					usename: null
+				}
 			}
 		})
 	});
