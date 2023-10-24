@@ -19,6 +19,8 @@ router
 	.post(protect, executeTrade)
 	.delete(protect, deleteTrade)
 	.patch(protect, favouriteTrade);
-router.route('/direct-trades').get(protect, getDirectTrades);
+router.route('/direct').get(protect, getDirectTrades);
 
 export default router;
+
+// 129b344b-8a80-452b-870c-c3982baf5484

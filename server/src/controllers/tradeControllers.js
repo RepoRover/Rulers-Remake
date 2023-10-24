@@ -21,6 +21,8 @@ import {
 } from '../helpers/trade_helpers/tradeFunctions.js';
 import Profile from '../models/profileModel.js';
 import Collection from '../models/collectionModel.js';
+import Card from '../models/cardModel.js';
+import { generateLinks } from '../helpers/linkGenerator.js';
 
 export const postNewTrade = catchAsync(async (req, res, next) => {
 	const { trade } = req.body;
@@ -390,10 +392,36 @@ export const deleteTrade = catchAsync(async (req, res, next) => {
 	if (trade.trade_owner.user_id !== user_id)
 		return next(new APIError("You can't delete this trade.", 401));
 
+	console.log('hello 1');
+
+	let tradeInFav = true;
+	if (trade.trade_accepter.user_id !== null) {
+		const accepterProfile = await Profile.findOne({ profile_id: trade.trade_accepter.user_id });
+
+		if (accepterProfile.favourite_trades.includes(trade.trade_id)) {
+			const updatedAccepterTrades = accepterProfile.favourite_trades.filter(
+				(tradeId) => tradeId !== trade.trade_id
+			);
+
+			const updateAccepterProfile = await Profile.updateOne(
+				{ profile_id: trade.trade_accepter.user_id },
+				{ favourite_trades: updatedAccepterTrades }
+			);
+
+			if (!updateAccepterProfile) return next(new APIError("Couldn't delete your trade.", 500));
+
+			tradeInFav = false;
+		}
+	}
+	console.log('hello 2');
+
 	let cardInSaleStatusUpdated = null;
 	let heldBalanceUpdated = null;
 	if (!trade.give_gems) {
+		console.log('hello 2.1');
+		console.log(trade);
 		cardInSaleStatusUpdated = await updateInSaleCardStatus(trade.give, 'close', req.user, false);
+		console.log('hello 2.2');
 	} else {
 		heldBalanceUpdated = await updateHeldGemsBalance(user_id, trade, 'close');
 	}
@@ -406,8 +434,18 @@ export const deleteTrade = catchAsync(async (req, res, next) => {
 		} else if (!heldBalanceUpdated && trade.give_gems) {
 			await updateHeldGemsBalance(user_id, trade, 'open');
 		}
+
+		if (!tradeInFav) {
+			const accepterProfile = await Profile.findOne({ profile_id: trade.trade_accepter.user_id });
+			const addBackToFav = [trade.trade_id, ...accepterProfile.favourite_trades];
+			await Profile.updateOne(
+				{ profile_id: trade.trade_accepter.user_id },
+				{ favourite_trades: addBackToFav }
+			);
+		}
 		return next(new APIError("Couldn't delete your trade.", 500));
 	}
+	console.log('hello 3');
 
 	res.status(200).json({ status: 'success' });
 });
@@ -451,6 +489,61 @@ export const favouriteTrade = catchAsync(async (req, res, next) => {
 
 export const getDirectTrades = catchAsync(async (req, res, next) => {
 	const { user_id } = req.user;
+	const { page = 1, favourites, trade_type, username_search } = req.query;
+
+	const skip = (page - 1) * process.env.ITEMS_PER_PAGE;
+
+	let filters = {
+		'trade_accepter.user_id': user_id
+	};
+
+	let usernameFilter = {};
+	if (username_search) {
+		usernameFilter = {
+			'trade_owner.username': username_search
+		};
+	}
+
+	if (favourites) {
+		const profile = await Profile.findOne({ profile_id: user_id });
+		if (!profile) return next(new APIError('No user found.', 404));
+
+		filters.trade_id = { $in: profile.favourite_trades };
+	}
+
+	if (trade_type && trade_type === 'cards') {
+		filters.give = { $type: 'array' };
+	} else if (trade_type && trade_type === 'gems') {
+		filters.give = { $type: 'number' };
+	}
+
+	// Fetch trades based on the filters
+	const trades = await Trade.find({ ...filters, ...usernameFilter })
+		.skip(skip)
+		.limit(process.env.ITEMS_PER_PAGE);
+	const totalTrades = await Trade.countDocuments(filters);
+
+	// Iterate through the trades to replace ids with actual data
+	const populatedTrades = await Promise.all(
+		trades.map(async (trade) => {
+			if (Array.isArray(trade.give)) {
+				trade.give = await Card.find({ card_id: { $in: trade.give } });
+			}
+			if (Array.isArray(trade.take)) {
+				trade.take = await Card.find({ card_id: { $in: trade.take } });
+			}
+			return trade;
+		})
+	);
+
+	const links = generateLinks(req.baseUrl, req.url, page, totalTrades);
+
+	// Send the response
+	res.status(200).json({
+		status: 'success',
+		trades: populatedTrades,
+		links
+	});
 });
 
 export const getAllTrades = catchAsync(async (req, res, next) => {});

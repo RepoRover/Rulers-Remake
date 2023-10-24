@@ -6,10 +6,10 @@ const tradeSchema = new mongoose.Schema({
 		required: true,
 		unique: true
 	},
-	// trade_status: {
-	// 	type: String,
-	// 	required: true
-	// },
+	metadata: {
+		type: [String],
+		required: true
+	},
 	trade_owner: {
 		type: Object,
 		required: true

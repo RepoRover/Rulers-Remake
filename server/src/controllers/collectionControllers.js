@@ -20,13 +20,14 @@ export const getAllCollections = catchAsync(async (req, res, next) => {
 		}
 		const decoded = jwt.decode(token, process.env.ACCESS_TOKEN_SECRET);
 
-		if (!decoded.user_id) {
+		if (!decoded) {
 			return next(new APIError('Invalid token.', 403));
 		}
 
-		const { favourite_collections } = await Profile.findOne({ profile_id: decoded.user_id });
+		const profile = await Profile.findOne({ profile_id: decoded.user_id });
+		if (!profile) return next(new APIError('No user found.', 404));
 
-		filters.collection_id = { $in: favourite_collections };
+		filters.collection_id = { $in: profile.favourite_collections };
 	}
 
 	let sort = {};

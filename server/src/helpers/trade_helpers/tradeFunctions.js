@@ -7,12 +7,15 @@ import { v4 } from 'uuid';
 
 const openTrade = async (trade, user) => {
 	const tradeId = v4();
+	let metadata = await getMetaData(trade);
+	metadata = [...metadata, user.username];
 	const newTrade = new Trade({
 		trade_id: tradeId,
 		trade_owner: {
 			user_id: user.user_id,
 			username: user.username
 		},
+		metadata,
 		...trade
 	});
 
@@ -24,6 +27,7 @@ const openTrade = async (trade, user) => {
 
 export const updateInSaleCardStatus = async (cardIds, tradeAction, user, backToSale) => {
 	let updateInSaleStatus;
+	// console.log(cardIds);
 	if (tradeAction === 'open') {
 		updateInSaleStatus = await Card.updateMany(
 			{ card_id: { $in: cardIds } },
@@ -223,4 +227,32 @@ export const updateHeldGemsBalance = async (user_id, trade, tradeAction) => {
 
 	if (!profileUpdated) return false;
 	return true;
+};
+
+const getMetaData = async (trade) => {
+	let metaData = [];
+
+	if (Array.isArray(trade.give)) {
+		const giveCards = await Card.find({ card_id: { $in: trade.give } });
+
+		const giveMetaData = giveCards.reduce((acc, card) => {
+			acc.push(card.rarity.toLowerCase(), card.role.toLowerCase(), card.name.toLowerCase());
+			return acc;
+		}, []);
+
+		metaData = [...metaData, ...giveMetaData];
+	}
+	// FIX find heros and not cards
+	if (Array.isArray(trade.take)) {
+		const takeCards = await Card.find({ card_id: { $in: trade.take } });
+
+		const takeMetaData = takeCards.reduce((acc, card) => {
+			acc.push(card.rarity, card.role, card.name);
+			return acc;
+		}, []);
+
+		metaData = [...metaData, ...takeMetaData];
+	}
+
+	return metaData;
 };
