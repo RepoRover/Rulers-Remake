@@ -4,6 +4,7 @@ import Collection from '../../models/collectionModel.js';
 import Profile from '../../models/profileModel.js';
 import Transaction from '../../models/transactionModel.js';
 import { v4 } from 'uuid';
+import Hero from '../../models/heroModel.js';
 
 const openTrade = async (trade, user) => {
 	const tradeId = v4();
@@ -242,12 +243,11 @@ const getMetaData = async (trade) => {
 
 		metaData = [...metaData, ...giveMetaData];
 	}
-	// FIX find heros and not cards
 	if (Array.isArray(trade.take)) {
-		const takeCards = await Card.find({ card_id: { $in: trade.take } });
+		const takeHeros = await Hero.find({ hero_id: { $in: trade.take } });
 
-		const takeMetaData = takeCards.reduce((acc, card) => {
-			acc.push(card.rarity, card.role, card.name);
+		const takeMetaData = takeHeros.reduce((acc, hero) => {
+			acc.push(hero.rarity, hero.role, hero.name);
 			return acc;
 		}, []);
 
