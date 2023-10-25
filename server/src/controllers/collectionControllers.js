@@ -5,6 +5,7 @@ import Card from '../models/cardModel.js';
 import Profile from '../models/profileModel.js';
 import jwt from 'jsonwebtoken';
 import { generateLinks } from '../helpers/linkGenerator.js';
+import { favouriteItem } from '../helpers/itemFavourite';
 
 export const getAllCollections = catchAsync(async (req, res, next) => {
 	const { page = 1, favourites, most_cards, username_search } = req.query;
@@ -126,43 +127,7 @@ export const getUserCollection = catchAsync(async (req, res, next) => {
 	res.status(200).json({ status: 'success', cards, links });
 });
 
-export const favouriteCollectionToggle = catchAsync(async (req, res, next) => {
-	// User that wants to add collection to favourites
-	const { user_id } = req.user;
-	// User collection to add in favourites
-	const { username } = req.params;
-
-	const profile = await Profile.findOne({ profile_id: user_id });
-	if (!profile) return next(new APIError("Can't find your profile.", 404));
-
-	const collection = await Collection.findOne({ username });
-	if (!collection) return next(new APIError('No collection to favourite found.', 404));
-
-	let updatedFavCollections = [];
-	if (!profile.favourite_collections.includes(collection.collection_id)) {
-		updatedFavCollections = [collection.collection_id, ...profile.favourite_collections];
-	} else {
-		updatedFavCollections = profile.favourite_collections.filter(
-			(collectionId) => collectionId !== collection.collection_id
-		);
-	}
-
-	const updatedProfile = await Profile.updateOne(
-		{ profile_id: user_id },
-		{ $set: { favourite_collections: updatedFavCollections } }
-	);
-
-	if (!updatedProfile) return next(new APIError("Couldn't add to favourites.", 500));
-
-	res.status(200).json({
-		status: 'success',
-		message: `${username}'s collection ${
-			!profile.favourite_collections.includes(collection.collection_id)
-				? 'added to'
-				: 'removed from'
-		} favourites`
-	});
-});
+export const favouriteCollectionToggle = favouriteItem('collection');
 
 // USE FOR APP INIT ONLY
 export const getWholeUserCollection = catchAsync(async (req, res, next) => {

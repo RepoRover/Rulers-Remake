@@ -24,6 +24,7 @@ import Collection from '../models/collectionModel.js';
 import Card from '../models/cardModel.js';
 import { generateLinks } from '../helpers/linkGenerator.js';
 import Hero from '../models/heroModel.js';
+import { favouriteItem } from '../helpers/itemFavourite';
 
 export const postNewTrade = catchAsync(async (req, res, next) => {
 	const { trade } = req.body;
@@ -444,43 +445,6 @@ export const deleteTrade = catchAsync(async (req, res, next) => {
 	res.status(200).json({ status: 'success' });
 });
 
-export const favouriteTrade = catchAsync(async (req, res, next) => {
-	// User that wants to add collection to favourites
-	const { user_id } = req.user;
-	// User collection to add in favourites
-	const { trade_id } = req.params;
-
-	const profile = await Profile.findOne({ profile_id: user_id });
-	if (!profile) return next(new APIError("Can't find your profile.", 404));
-
-	const trade = await Trade.findOne({ trade_id });
-	if (!trade) return next(new APIError('No trade to favourite found.', 404));
-
-	if (user_id !== trade.trade_accepter.user_id)
-		return next(new APIError('You can favourite direct trades only.', 401));
-
-	let updatedFavTrades = [];
-	if (!profile.favourite_trades.includes(trade.trade_id)) {
-		updatedFavTrades = [trade.trade_id, ...profile.favourite_trades];
-	} else {
-		updatedFavTrades = profile.favourite_trades.filter((tradeId) => tradeId !== trade.trade_id);
-	}
-
-	const updatedProfile = await Profile.updateOne(
-		{ profile_id: user_id },
-		{ $set: { favourite_trades: updatedFavTrades } }
-	);
-
-	if (!updatedProfile) return next(new APIError("Couldn't add to favourites.", 500));
-
-	res.status(200).json({
-		status: 'success',
-		message: `Trade ${
-			!profile.favourite_trades.includes(trade.trade_id) ? 'added to' : 'removed from'
-		} favourites.`
-	});
-});
-
 export const getDirectTrades = catchAsync(async (req, res, next) => {
 	const { user_id } = req.user;
 	const { page = 1, favourites, trade_type, search } = req.query;
@@ -587,3 +551,5 @@ export const getAllTrades = catchAsync(async (req, res, next) => {
 		links
 	});
 });
+
+export const favouriteTrade = favouriteItem('trade');

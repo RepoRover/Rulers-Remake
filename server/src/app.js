@@ -6,7 +6,6 @@ import authRoutes from './routes/authRoutes.js';
 import collectionRoutes from './routes/collectionRoutes.js';
 import tradeRoutes from './routes/tradeRoutes.js';
 import userRoutes from './routes/userRoutes.js';
-// import profileRoutes from './routes/profileRoutes.js';
 import heroRoutes from './routes/heroRoutes.js';
 import cardRoutes from './routes/cardRoutes.js';
 
@@ -21,12 +20,12 @@ app.use(express.json());
 
 if (process.env.ENV === 'dev') app.use(morgan('dev'));
 
-app.use(`/api/${process.env.API_VERSION}/auth`, authRoutes);
-app.use(`/api/${process.env.API_VERSION}/collections`, collectionRoutes);
-app.use(`/api/${process.env.API_VERSION}/trades`, tradeRoutes);
 app.use(`/api/${process.env.API_VERSION}/me`, userRoutes);
-app.use(`/api/${process.env.API_VERSION}/heros`, heroRoutes);
+app.use(`/api/${process.env.API_VERSION}/auth`, authRoutes);
 app.use(`/api/${process.env.API_VERSION}/cards`, cardRoutes);
+app.use(`/api/${process.env.API_VERSION}/heros`, heroRoutes);
+app.use(`/api/${process.env.API_VERSION}/trades`, tradeRoutes);
+app.use(`/api/${process.env.API_VERSION}/collections`, collectionRoutes);
 app.use(`/api/${process.env.API_VERSION}/:username`, getUserProfile);
 
 app.all('*', (req, res, next) => {
