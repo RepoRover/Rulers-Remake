@@ -16,7 +16,7 @@ export const generateLinks = (baseUrl, url, page, totalQueryResults) => {
 	};
 
 	return {
-		first: generateLink(1),
+		first: totalPages > 1 ? generateLink(1) : null,
 		last: totalPages > 1 ? generateLink(totalPages) : null,
 		prev3: page * 1 - 3 > 0 ? generateLink(page * 1 - 3) : null,
 		prev2: page * 1 - 2 > 0 ? generateLink(page * 1 - 2) : null,

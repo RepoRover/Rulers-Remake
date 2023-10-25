@@ -9,7 +9,7 @@ import Hero from '../../models/heroModel.js';
 const openTrade = async (trade, user) => {
 	const tradeId = v4();
 	let metadata = await getMetaData(trade);
-	metadata = [...metadata, user.username];
+	metadata = [...metadata, user.username.toLowerCase()];
 	const newTrade = new Trade({
 		trade_id: tradeId,
 		trade_owner: {

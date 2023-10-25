@@ -43,14 +43,6 @@ export const postNewTrade = catchAsync(async (req, res, next) => {
 		const enoughGems = await validateBalance(user_id, trade.give);
 		if (!enoughGems) return next(new APIError("You don't have enough gems.", 400));
 
-		if (trade.trade_accepter.user_id) {
-			const tradeAccepterProfile = await Profile.findOne({
-				profile_id: trade.trade_accepter.user_id
-			});
-			if (!tradeAccepterProfile)
-				return next(new APIError('No user to accept your trade found.', 404));
-		}
-
 		const userProfile = await Profile.findOne({ profile_id: user_id });
 
 		const updateHoldGems = await Profile.updateOne(
@@ -62,6 +54,14 @@ export const postNewTrade = catchAsync(async (req, res, next) => {
 		);
 
 		if (!updateHoldGems) return next(new APIError("Couldn't publish your trade.", 500));
+	}
+
+	if (trade.trade_accepter.user_id) {
+		const tradeAccepterProfile = await Profile.findOne({
+			profile_id: trade.trade_accepter.user_id
+		});
+		if (!tradeAccepterProfile)
+			return next(new APIError('No user to accept your trade found.', 404));
 	}
 
 	const tradeId = await newTrade(trade, req.user);
@@ -489,7 +489,7 @@ export const favouriteTrade = catchAsync(async (req, res, next) => {
 
 export const getDirectTrades = catchAsync(async (req, res, next) => {
 	const { user_id } = req.user;
-	const { page = 1, favourites, trade_type, username_search } = req.query;
+	const { page = 1, favourites, trade_type, search } = req.query;
 
 	const skip = (page - 1) * process.env.ITEMS_PER_PAGE;
 
@@ -497,11 +497,9 @@ export const getDirectTrades = catchAsync(async (req, res, next) => {
 		'trade_accepter.user_id': user_id
 	};
 
-	let usernameFilter = {};
-	if (username_search) {
-		usernameFilter = {
-			'trade_owner.username': username_search
-		};
+	if (search) {
+		const regex = new RegExp(search, 'i');
+		filters.metadata = { $elemMatch: { $regex: regex } };
 	}
 
 	if (favourites) {
@@ -518,9 +516,7 @@ export const getDirectTrades = catchAsync(async (req, res, next) => {
 	}
 
 	// Fetch trades based on the filters
-	const trades = await Trade.find({ ...filters, ...usernameFilter })
-		.skip(skip)
-		.limit(process.env.ITEMS_PER_PAGE);
+	const trades = await Trade.find(filters).skip(skip).limit(process.env.ITEMS_PER_PAGE);
 	const totalTrades = await Trade.countDocuments(filters);
 
 	// Iterate through the trades to replace ids with actual data
