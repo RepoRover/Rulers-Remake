@@ -23,6 +23,7 @@ import Profile from '../models/profileModel.js';
 import Collection from '../models/collectionModel.js';
 import Card from '../models/cardModel.js';
 import { generateLinks } from '../helpers/linkGenerator.js';
+import Hero from '../models/heroModel.js';
 
 export const postNewTrade = catchAsync(async (req, res, next) => {
 	const { trade } = req.body;
@@ -517,7 +518,7 @@ export const getDirectTrades = catchAsync(async (req, res, next) => {
 				trade.give = await Card.find({ card_id: { $in: trade.give } });
 			}
 			if (Array.isArray(trade.take)) {
-				trade.take = await Card.find({ card_id: { $in: trade.take } });
+				trade.take = await Hero.find({ hero_id: { $in: trade.take } });
 			}
 			return trade;
 		})

@@ -61,3 +61,5 @@ export const accountDelete = catchAsync(async (req, res, next) => {});
 export const newAvatar = catchAsync(async (req, res, next) => {});
 
 export const deleteAvatar = catchAsync(async (req, res, next) => {});
+
+export const getUser = catchAsync(async (req, res, next) => {});
