@@ -392,8 +392,6 @@ export const deleteTrade = catchAsync(async (req, res, next) => {
 	if (trade.trade_owner.user_id !== user_id)
 		return next(new APIError("You can't delete this trade.", 401));
 
-	console.log('hello 1');
-
 	let tradeInFav = true;
 	if (trade.trade_accepter.user_id !== null) {
 		const accepterProfile = await Profile.findOne({ profile_id: trade.trade_accepter.user_id });
@@ -413,15 +411,11 @@ export const deleteTrade = catchAsync(async (req, res, next) => {
 			tradeInFav = false;
 		}
 	}
-	console.log('hello 2');
 
 	let cardInSaleStatusUpdated = null;
 	let heldBalanceUpdated = null;
 	if (!trade.give_gems) {
-		console.log('hello 2.1');
-		console.log(trade);
 		cardInSaleStatusUpdated = await updateInSaleCardStatus(trade.give, 'close', req.user, false);
-		console.log('hello 2.2');
 	} else {
 		heldBalanceUpdated = await updateHeldGemsBalance(user_id, trade, 'close');
 	}
@@ -445,7 +439,6 @@ export const deleteTrade = catchAsync(async (req, res, next) => {
 		}
 		return next(new APIError("Couldn't delete your trade.", 500));
 	}
-	console.log('hello 3');
 
 	res.status(200).json({ status: 'success' });
 });
@@ -515,11 +508,9 @@ export const getDirectTrades = catchAsync(async (req, res, next) => {
 		filters.give = { $type: 'number' };
 	}
 
-	// Fetch trades based on the filters
 	const trades = await Trade.find(filters).skip(skip).limit(process.env.ITEMS_PER_PAGE);
 	const totalTrades = await Trade.countDocuments(filters);
 
-	// Iterate through the trades to replace ids with actual data
 	const populatedTrades = await Promise.all(
 		trades.map(async (trade) => {
 			if (Array.isArray(trade.give)) {
@@ -534,7 +525,6 @@ export const getDirectTrades = catchAsync(async (req, res, next) => {
 
 	const links = generateLinks(req.baseUrl, req.url, page, totalTrades);
 
-	// Send the response
 	res.status(200).json({
 		status: 'success',
 		trades: populatedTrades,
@@ -542,4 +532,57 @@ export const getDirectTrades = catchAsync(async (req, res, next) => {
 	});
 });
 
-export const getAllTrades = catchAsync(async (req, res, next) => {});
+// eslint-disable-next-line no-unused-vars
+export const getAllTrades = catchAsync(async (req, res, next) => {
+	const { page = 1, trade_type, search, role, rarity } = req.query;
+
+	const skip = (page - 1) * process.env.ITEMS_PER_PAGE;
+
+	let filters = {
+		'trade_accepter.user_id': null
+	};
+
+	const metaDataFilters = [];
+	if (search) {
+		metaDataFilters.push({ $elemMatch: { $regex: new RegExp(search, 'i') } });
+	}
+	if (rarity) {
+		metaDataFilters.push({ $elemMatch: { $regex: new RegExp(rarity, 'i') } });
+	}
+	if (role) {
+		metaDataFilters.push({ $elemMatch: { $regex: new RegExp(role, 'i') } });
+	}
+
+	if (trade_type && trade_type === 'cards') {
+		filters.give = { $type: 'array' };
+	} else if (trade_type && trade_type === 'gems') {
+		filters.give = { $type: 'number' };
+	}
+
+	if (metaDataFilters.length > 0) {
+		filters.metadata = { $all: metaDataFilters };
+	}
+
+	const trades = await Trade.find(filters).skip(skip).limit(process.env.ITEMS_PER_PAGE);
+	const totalTrades = await Trade.countDocuments(filters);
+
+	const populatedTrades = await Promise.all(
+		trades.map(async (trade) => {
+			if (Array.isArray(trade.give)) {
+				trade.give = await Card.find({ card_id: { $in: trade.give } });
+			}
+			if (Array.isArray(trade.take)) {
+				trade.take = await Card.find({ card_id: { $in: trade.take } });
+			}
+			return trade;
+		})
+	);
+
+	const links = generateLinks(req.baseUrl, req.url, page, totalTrades);
+
+	res.status(200).json({
+		status: 'success',
+		trades: populatedTrades,
+		links
+	});
+});
