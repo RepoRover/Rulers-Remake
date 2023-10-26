@@ -11,12 +11,12 @@ const uploadAvatarMiddleware = (req, res, next) => {
 	const busboy = Busboy({
 		headers: req.headers,
 		limits: {
-			fileSize: 3 * 1024 * 1024, // 3MB in bytes
+			fileSize: 3 * 1024 * 1024,
 			files: 1
 		}
 	});
 
-	const saveToPath = path.join(__dirname, './../../../src/assets/users/'); // Replace `path_to_save_files` with the desired path
+	const saveToPath = path.join(__dirname, './../../../src/assets/users/');
 
 	busboy.on('file', (fieldname, event, fileMeta) => {
 		const allowedMimetypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
@@ -25,15 +25,14 @@ const uploadAvatarMiddleware = (req, res, next) => {
 			return next(new Error('Unsupported file type.'));
 		}
 
-		const newFilename = `${v4()}${path.extname(fileMeta.filename)}`; // Get the original name of the file
+		const newFilename = `${v4()}${path.extname(fileMeta.filename)}`;
 		const saveTo = path.join(saveToPath, newFilename);
 
-		let uploadedBytes = 0; // Initialize a counter for uploaded bytes
+		let uploadedBytes = 0;
 
 		event.on('data', (data) => {
 			uploadedBytes += data.length;
 			if (uploadedBytes > 3 * 1024 * 1024) {
-				// Check the size
 				return next(new Error('File size limit exceeded.'));
 			}
 		});

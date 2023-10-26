@@ -60,8 +60,6 @@ export const changeUsername = catchAsync(async (req, res, next) => {
 	res.status(200).json({ status: 'success', message: 'Username changed.' });
 });
 
-export const accountDelete = catchAsync(async (req, res, next) => {});
-
 export const newAvatar = catchAsync(async (req, res, next) => {
 	if (!req.file) {
 		return next(new APIError('Failed to upload your avatar.', 500));
@@ -128,3 +126,5 @@ export const deleteAvatar = catchAsync(async (req, res, next) => {
 });
 
 export const getUser = catchAsync(async (req, res, next) => {});
+
+export const accountDelete = catchAsync(async (req, res, next) => {});
