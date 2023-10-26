@@ -24,7 +24,7 @@ import Collection from '../models/collectionModel.js';
 import Card from '../models/cardModel.js';
 import { generateLinks } from '../helpers/linkGenerator.js';
 import Hero from '../models/heroModel.js';
-import { favouriteItem } from '../helpers/itemFavourite';
+import { favouriteItem } from '../helpers/itemFavourite.js';
 
 export const postNewTrade = catchAsync(async (req, res, next) => {
 	const { trade } = req.body;

@@ -74,7 +74,7 @@ export const signup = catchAsync(async (req, res, next) => {
 		username,
 		gems_available: 0,
 		gems_held: 0,
-		image_path: '/src/assets/default_profile.webp',
+		image_path: '/src/assets/users/default_profile.webp',
 		free_gem_sets: 5,
 		favourite_trades: [],
 		favourite_collections: [],

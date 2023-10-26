@@ -1,5 +1,5 @@
-import APIError from '../helpers/APIError';
-import catchAsync from '../helpers/catchAsync';
+import APIError from '../helpers/APIError.js';
+import catchAsync from '../helpers/catchAsync.js';
 import Hero from './../models/heroModel.js';
 
 export const getAllHeros = catchAsync(async (req, res, next) => {

@@ -1,9 +1,9 @@
-import catchAsync from './catchAsync';
-import Profile from '../models/profileModel';
-import APIError from './APIError';
-import Collection from '../models/collectionModel';
-import Card from '../models/cardModel';
-import Trade from '../models/tradeModel';
+import catchAsync from './catchAsync.js';
+import Profile from '../models/profileModel.js';
+import APIError from './APIError.js';
+import Collection from '../models/collectionModel.js';
+import Card from '../models/cardModel.js';
+import Trade from '../models/tradeModel.js';
 
 export const favouriteItem = (itemName) => {
 	return catchAsync(async (req, res, next) => {

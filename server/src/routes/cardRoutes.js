@@ -1,7 +1,7 @@
 import { Router } from 'express';
 
 import protect from './../helpers/protect.js';
-import { favouriteItem } from '../helpers/itemFavourite';
+import { favouriteItem } from '../helpers/itemFavourite.js';
 
 const router = Router();
 

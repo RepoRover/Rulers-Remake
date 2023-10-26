@@ -74,7 +74,9 @@ export const closeTrade = async (trade_id, user_id, username) => {
 	const tradeDelte = await Trade.deleteOne({ trade_id });
 	if (!tradeDelte) return false;
 
+	const transaction_id = v4();
 	const newTransaction = new Transaction({
+		transaction_id,
 		trade_id: trade.trade_id,
 		give: trade.give,
 		give_gems: trade.give_gems,

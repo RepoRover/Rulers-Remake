@@ -5,7 +5,7 @@ import Card from '../models/cardModel.js';
 import Profile from '../models/profileModel.js';
 import jwt from 'jsonwebtoken';
 import { generateLinks } from '../helpers/linkGenerator.js';
-import { favouriteItem } from '../helpers/itemFavourite';
+import { favouriteItem } from '../helpers/itemFavourite.js';
 
 export const getAllCollections = catchAsync(async (req, res, next) => {
 	const { page = 1, favourites, most_cards, username_search } = req.query;

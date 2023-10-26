@@ -1,8 +1,12 @@
-import catchAsync from '../helpers/catchAsync';
-import APIError from '../helpers/APIError';
-import findUser from '../helpers/user_helpers/findUser';
-import updateUser from '../helpers/user_helpers/updateUser';
+import catchAsync from '../helpers/catchAsync.js';
+import APIError from '../helpers/APIError.js';
+import findUser from '../helpers/user_helpers/findUser.js';
+import updateUser from '../helpers/user_helpers/updateUser.js';
+import Profile from './../models/profileModel.js';
+import Collection from './../models/collectionModel.js';
 import bcryptjs from 'bcryptjs';
+import fs from 'fs/promises';
+import path from 'path';
 
 export const changePassword = catchAsync(async (req, res, next) => {
 	const { current_password, new_password, new_password_confirm } = req.body;
@@ -58,7 +62,38 @@ export const changeUsername = catchAsync(async (req, res, next) => {
 
 export const accountDelete = catchAsync(async (req, res, next) => {});
 
-export const newAvatar = catchAsync(async (req, res, next) => {});
+export const newAvatar = catchAsync(async (req, res, next) => {
+	if (!req.file) {
+		return next(new APIError('Failed to upload your avatar.', 500));
+	}
+
+	const { user_id } = req.user;
+	const setObj = { $set: { image_path: `/src/assets/users/${req.file.filename}` } };
+
+	const userProfile = await Profile.findOne({ profile_id: user_id });
+
+	const updatedProfile = await Profile.updateOne({ profile_id: user_id }, setObj);
+	const updatedCollection = await Collection.updateOne({ collection_id: user_id }, setObj);
+
+	if (!updatedProfile || !updatedCollection) {
+		let resetObj = { $set: { image_path: userProfile.image_path } };
+		await Profile.updateOne({ profile_id: user_id }, resetObj);
+		await Collection.updateOne({ collection_id: user_id }, resetObj);
+
+		fs.unlink(path.join(__dirname, `./../../../src/assets/users/${req.file.filename}`), (err) => {
+			if (err) return next(new APIError('Failed to delete new avatar.', 500));
+		});
+
+		return next(new APIError('Failed to upload your avatar.', 500));
+	}
+
+	if (userProfile.image_path !== '/src/assets/default_profile.webp') {
+		fs.unlink(path.join(__dirname, `./../../..${userProfile.image_path}`), (err) => {
+			if (err) return next(new APIError('Failed to delete old avatar.', 500));
+		});
+	}
+	res.status(200).json({ status: 'success' });
+});
 
 export const deleteAvatar = catchAsync(async (req, res, next) => {});
 
