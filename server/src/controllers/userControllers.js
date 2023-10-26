@@ -80,9 +80,7 @@ export const newAvatar = catchAsync(async (req, res, next) => {
 		await Profile.updateOne({ profile_id: user_id }, resetObj);
 		await Collection.updateOne({ collection_id: user_id }, resetObj);
 
-		fs.unlink(path.join(__dirname, `./../../../src/assets/users/${req.file.filename}`), (err) => {
-			if (err) return next(new APIError('Failed to delete new avatar.', 500));
-		});
+		fs.unlink(path.join(__dirname, `./../../../src/assets/users/${req.file.filename}`));
 
 		return next(new APIError('Failed to upload your avatar.', 500));
 	}
@@ -95,6 +93,38 @@ export const newAvatar = catchAsync(async (req, res, next) => {
 	res.status(200).json({ status: 'success' });
 });
 
-export const deleteAvatar = catchAsync(async (req, res, next) => {});
+export const deleteAvatar = catchAsync(async (req, res, next) => {
+	const { user_id } = req.user;
+
+	const userProfile = await Profile.findOne({ profile_id: user_id });
+
+	if (userProfile.image_path === '/src/assets/default_profile.webp')
+		return next(new APIError("You can't delete default avatar.", 403));
+
+	const setObj = { $set: { image_path: '/src/assets/default_profile.webp' } };
+
+	const updatedProfile = await Profile.updateOne({ profile_id: user_id }, setObj);
+	const updatedCollection = await Collection.updateOne({ collection_id: user_id }, setObj);
+
+	if (!updatedProfile || !updatedCollection) {
+		let resetObj = { $set: { image_path: userProfile.image_path } };
+		await Profile.updateOne({ profile_id: user_id }, resetObj);
+		await Collection.updateOne({ collection_id: user_id }, resetObj);
+
+		return next(new APIError("Couldn't delete your avatar.", 500));
+	}
+
+	fs.unlink(path.join(__dirname, `./../../..${userProfile.image_path}`), async (err) => {
+		if (err) {
+			let resetObj = { $set: { image_path: userProfile.image_path } };
+			await Profile.updateOne({ profile_id: user_id }, resetObj);
+			await Collection.updateOne({ collection_id: user_id }, resetObj);
+
+			return next(new APIError('Failed to delete old avatar.', 500));
+		}
+	});
+
+	res.status(200).json({ status: 'success' });
+});
 
 export const getUser = catchAsync(async (req, res, next) => {});
