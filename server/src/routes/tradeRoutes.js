@@ -5,7 +5,7 @@ import {
 	getAllTrades,
 	postNewTrade,
 	executeTrade,
-	getDirectTrades,
+	// getDirectTrades,
 	favouriteTrade
 } from '../controllers/tradeControllers.js';
 
@@ -19,6 +19,5 @@ router
 	.post(protect, executeTrade)
 	.delete(protect, deleteTrade)
 	.patch(protect, favouriteTrade);
-router.route('/direct').get(protect, getDirectTrades);
 
 export default router;

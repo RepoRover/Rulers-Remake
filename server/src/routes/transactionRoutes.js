@@ -1,10 +1,10 @@
 import { Router } from 'express';
 
-import { getAllTransactions, getSingleTransaction } from '../controllers/transactionControllers';
+import { getUserTransactions, getSingleTransaction } from '../controllers/transactionControllers';
 
 const router = Router();
 
-router.route('/').get(getAllTransactions);
+router.route('/user/:username').get(getUserTransactions);
 router.route('/:transaction_id').get(getSingleTransaction);
 
 export default router;

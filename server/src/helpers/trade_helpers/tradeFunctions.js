@@ -26,41 +26,30 @@ const openTrade = async (trade, user) => {
 	return newTrade.trade_id;
 };
 
-export const updateInSaleCardStatus = async (cardIds, tradeAction, user, backToSale) => {
+export const updateInSaleCardStatus = async (cardIds, user, toSale) => {
 	let updateInSaleStatus;
-	// console.log(cardIds);
-	if (tradeAction === 'open') {
-		updateInSaleStatus = await Card.updateMany(
-			{ card_id: { $in: cardIds } },
-			{ $set: { in_sale: true } }
-		);
-	} else if (tradeAction === 'close') {
-		updateInSaleStatus = await Card.updateMany(
-			{
-				card_id: { $in: cardIds }
-			},
-			{
-				$set: {
-					in_sale: backToSale ? true : false,
-					'card_owner.user_id': user.user_id,
-					'card_owner.username': user.username
-				}
+	updateInSaleStatus = await Card.updateMany(
+		{
+			card_id: { $in: cardIds }
+		},
+		{
+			$set: {
+				in_sale: toSale ? true : false,
+				'card_owner.user_id': user.user_id,
+				'card_owner.username': user.username
 			}
-		);
-	}
+		}
+	);
 
 	if (!updateInSaleStatus) return false;
 	return true;
 };
 
 export const newTrade = async (trade, user) => {
-	let updateInSaleStatus;
 	if (!trade.give_gems) {
-		updateInSaleStatus = await updateInSaleCardStatus(trade.give, 'open');
-	} else if (trade.give_gems) {
-		updateInSaleStatus = await updateInSaleCardStatus(trade.take, 'open');
+		const updateInSaleStatus = await updateInSaleCardStatus(trade.give, user, true);
+		if (!updateInSaleStatus) return false;
 	}
-	if (!updateInSaleStatus) return false;
 
 	const tradeId = await openTrade(trade, user);
 	if (!tradeId) return false;
@@ -257,4 +246,63 @@ const getMetaData = async (trade) => {
 	}
 
 	return metaData;
+};
+
+export const openDefaultTrade = async (cardIds) => {
+	const mainAccProfile = await Profile.findOne({ username: process.env.MAIN_ACC_NAME });
+	const populatedCards = await Card.find({ card_id: { $in: cardIds } });
+
+	await updateInSaleCardStatus(
+		cardIds,
+		{
+			user_id: mainAccProfile.profile_id,
+			username: mainAccProfile.username
+		},
+		true
+	);
+
+	for (const card of populatedCards) {
+		let cardCost = 0;
+		switch (card.rarity) {
+			case 'Legendary':
+				cardCost = 2500;
+				break;
+			case 'Epic':
+				cardCost = 1000;
+				break;
+			case 'Rare':
+				cardCost = 400;
+		}
+
+		const tradeId = v4();
+
+		const trade = {
+			give: [card.card_id],
+			give_gems: false,
+			take: cardCost,
+			take_gems: true,
+			trade_owner: {
+				user_id: mainAccProfile.profile_id,
+				username: mainAccProfile.username
+			},
+			trade_accepter: {
+				user_id: null,
+				username: null
+			}
+		};
+
+		let metadata = await getMetaData(trade);
+		metadata = [...metadata, mainAccProfile.username.toLowerCase()];
+
+		const newTrade = new Trade({
+			trade_id: tradeId,
+			metadata,
+			...trade
+		});
+
+		const tradeSave = await newTrade.save();
+		if (!tradeSave) return false;
+	}
+
+	return true;
 };

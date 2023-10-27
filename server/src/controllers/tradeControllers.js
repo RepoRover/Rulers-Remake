@@ -23,7 +23,6 @@ import Profile from '../models/profileModel.js';
 import Collection from '../models/collectionModel.js';
 import Card from '../models/cardModel.js';
 import { generateLinks } from '../helpers/linkGenerator.js';
-import Hero from '../models/heroModel.js';
 import { favouriteItem } from '../helpers/itemFavourite.js';
 
 export const postNewTrade = catchAsync(async (req, res, next) => {
@@ -110,9 +109,9 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 
 			const chosenCardIds = await getUserCardsFromHeroIds(trade.take, user_id);
 
-			const updatedExecutorCards = executorCollection.cards.filter((cardId) => {
-				!chosenCardIds.includes(cardId);
-			});
+			const updatedExecutorCards = executorCollection.cards.filter(
+				(cardId) => !chosenCardIds.includes(cardId)
+			);
 
 			const updatedTradeOwnerCards = [...chosenCardIds, ...tradeOwnerCollection.cards];
 
@@ -162,12 +161,7 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 				}
 			);
 
-			const updateCardsInfo = await updateInSaleCardStatus(
-				chosenCardIds,
-				'close',
-				trade.trade_owner,
-				false
-			);
+			const updateCardsInfo = await updateInSaleCardStatus(chosenCardIds, trade.trade_owner, false);
 
 			const tradeClosed = await closeTrade(trade_id, user_id, username);
 
@@ -193,7 +187,7 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 					{ ...tradeOwnerCollection }
 				);
 
-				await updateInSaleCardStatus(chosenCardIds, 'close', req.user, false);
+				await updateInSaleCardStatus(chosenCardIds, req.user, false);
 
 				return next(new APIError('Trade failed.', 500));
 			}
@@ -254,15 +248,9 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 				}
 			);
 
-			const updateGivenCardsInfo = await updateInSaleCardStatus(
-				trade.give,
-				'close',
-				req.user,
-				false
-			);
+			const updateGivenCardsInfo = await updateInSaleCardStatus(trade.give, req.user, false);
 			const updateTakenCardsInfo = await updateInSaleCardStatus(
 				chosenCardIds,
-				'close',
 				trade.trade_owner,
 				false
 			);
@@ -285,8 +273,8 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 					{ ...tradeOwnerCollection }
 				);
 
-				await updateInSaleCardStatus(trade.give, 'close', trade.trade_owner, true);
-				await updateInSaleCardStatus(chosenCardIds, 'close', req.user, false);
+				await updateInSaleCardStatus(trade.give, trade.trade_owner, true);
+				await updateInSaleCardStatus(chosenCardIds, req.user, false);
 
 				return next(new APIError('Trade failed.', 500));
 			}
@@ -352,7 +340,7 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 			}
 		);
 
-		const updateCardsInfo = await updateInSaleCardStatus(trade.give, 'close', req.user, false);
+		const updateCardsInfo = await updateInSaleCardStatus(trade.give, req.user, false);
 
 		const tradeClosed = await closeTrade(trade_id, user_id, username);
 
@@ -375,7 +363,7 @@ export const executeTrade = catchAsync(async (req, res, next) => {
 				{ ...tradeOwnerCollection }
 			);
 
-			await updateInSaleCardStatus(trade.give, 'close', trade.trade_owner, true);
+			await updateInSaleCardStatus(trade.give, trade.trade_owner, true);
 
 			return next(new APIError('Trade failed.', 500));
 		}
@@ -417,7 +405,7 @@ export const deleteTrade = catchAsync(async (req, res, next) => {
 	let cardInSaleStatusUpdated = null;
 	let heldBalanceUpdated = null;
 	if (!trade.give_gems) {
-		cardInSaleStatusUpdated = await updateInSaleCardStatus(trade.give, 'close', req.user, false);
+		cardInSaleStatusUpdated = await updateInSaleCardStatus(trade.give, req.user, false);
 	} else {
 		heldBalanceUpdated = await updateHeldGemsBalance(user_id, trade, 'close');
 	}
@@ -426,7 +414,7 @@ export const deleteTrade = catchAsync(async (req, res, next) => {
 
 	if (!tradeDeleted || (!cardInSaleStatusUpdated && !heldBalanceUpdated)) {
 		if (!cardInSaleStatusUpdated && !trade.give_gems) {
-			await updateInSaleCardStatus(trade.give, 'open');
+			await updateInSaleCardStatus(trade.give, req.user, true);
 		} else if (!heldBalanceUpdated && trade.give_gems) {
 			await updateHeldGemsBalance(user_id, trade, 'open');
 		}
@@ -443,58 +431,6 @@ export const deleteTrade = catchAsync(async (req, res, next) => {
 	}
 
 	res.status(200).json({ status: 'success' });
-});
-
-export const getDirectTrades = catchAsync(async (req, res, next) => {
-	const { user_id } = req.user;
-	const { page = 1, favourites, trade_type, search } = req.query;
-
-	const skip = (page - 1) * process.env.ITEMS_PER_PAGE;
-
-	let filters = {
-		'trade_accepter.user_id': user_id
-	};
-
-	if (search) {
-		const regex = new RegExp(search, 'i');
-		filters.metadata = { $elemMatch: { $regex: regex } };
-	}
-
-	if (favourites) {
-		const profile = await Profile.findOne({ profile_id: user_id });
-		if (!profile) return next(new APIError('No user found.', 404));
-
-		filters.trade_id = { $in: profile.favourite_trades };
-	}
-
-	if (trade_type && trade_type === 'cards') {
-		filters.give = { $type: 'array' };
-	} else if (trade_type && trade_type === 'gems') {
-		filters.give = { $type: 'number' };
-	}
-
-	const trades = await Trade.find(filters).skip(skip).limit(process.env.ITEMS_PER_PAGE);
-	const totalTrades = await Trade.countDocuments(filters);
-
-	const populatedTrades = await Promise.all(
-		trades.map(async (trade) => {
-			if (Array.isArray(trade.give)) {
-				trade.give = await Card.find({ card_id: { $in: trade.give } });
-			}
-			if (Array.isArray(trade.take)) {
-				trade.take = await Hero.find({ hero_id: { $in: trade.take } });
-			}
-			return trade;
-		})
-	);
-
-	const links = generateLinks(req.baseUrl, req.url, page, totalTrades);
-
-	res.status(200).json({
-		status: 'success',
-		trades: populatedTrades,
-		links
-	});
 });
 
 // eslint-disable-next-line no-unused-vars
