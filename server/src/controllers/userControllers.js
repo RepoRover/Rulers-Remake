@@ -142,7 +142,7 @@ export const newAvatar = catchAsync(async (req, res, next) => {
 		return next(new APIError('Failed to upload your avatar.', 500));
 	}
 
-	if (userProfile.image_path !== '/src/assets/default_profile.webp') {
+	if (userProfile.image_path !== process.env.DEFAULT_ACC_IMG_PATH) {
 		fs.unlink(path.join(__dirname, `./../../..${userProfile.image_path}`), (err) => {
 			if (err) return next(new APIError('Failed to delete old avatar.', 500));
 		});
@@ -155,10 +155,10 @@ export const deleteAvatar = catchAsync(async (req, res, next) => {
 
 	const userProfile = await Profile.findOne({ profile_id: user_id });
 
-	if (userProfile.image_path === '/src/assets/default_profile.webp')
+	if (userProfile.image_path === process.env.DEFAULT_ACC_IMG_PATH)
 		return next(new APIError("You can't delete default avatar.", 403));
 
-	const setObj = { $set: { image_path: '/src/assets/default_profile.webp' } };
+	const setObj = { $set: { image_path: process.env.DEFAULT_ACC_IMG_PATH } };
 
 	const updatedProfile = await Profile.updateOne({ profile_id: user_id }, setObj);
 	const updatedCollection = await Collection.updateOne({ collection_id: user_id }, setObj);
@@ -184,14 +184,11 @@ export const deleteAvatar = catchAsync(async (req, res, next) => {
 	res.status(200).json({ status: 'success' });
 });
 
-export const accountDelete = catchAsync(async (req, res, next) => {
-	const { user_id, username } = req.user;
+const isMainAccount = (username) => username === process.env.MAIN_ACC_NAME;
 
-	if (username === process.env.MAIN_ACC_NAME)
-		return next(new APIError("You can't delete this account.", 401));
-
+const mergeCollections = async (userId) => {
 	const [userCollection, mainAccCollection] = await Promise.all([
-		Collection.findOne({ collection_id: user_id }),
+		Collection.findOne({ collection_id: userId }),
 		Collection.findOne({ username: process.env.MAIN_ACC_NAME })
 	]);
 
@@ -209,14 +206,24 @@ export const accountDelete = catchAsync(async (req, res, next) => {
 			}
 		);
 		await Collection.updateOne(
-			{ collection_id: user_id },
+			{ collection_id: userId },
 			{ $set: { cards: [], legendary_cards: 0, epic_cards: 0, rare_cards: 0 } }
 		);
 	}
 
+	return userCollection;
+};
+
+export const accountDelete = catchAsync(async (req, res, next) => {
+	const { user_id, username } = req.user;
+
+	if (isMainAccount(username)) return next(new APIError("You can't delete this account.", 401));
+
+	const userCollection = await mergeCollections(user_id);
+
 	const userTradesToUsers = await Trade.find({
 		'trade_owner.user_id': user_id,
-		'trade_accepter.user_id': { $nin: [null, 'deleted'] }
+		'trade_accepter.user_id': { $nin: [null, process.env.DELETED_ACC_PLACEHOLDER] }
 	});
 
 	if (userTradesToUsers.length > 0) {
@@ -238,12 +245,26 @@ export const accountDelete = catchAsync(async (req, res, next) => {
 		}
 	}
 
-	Promise.all([
+	const [
+		tradesDeleted,
+		defaultTradesOpened,
+		directTradesUpdated,
+		deletedFromFavCollections,
+		deletedFromTransactions,
+		profileDeleted,
+		collectionDeleted,
+		userDeleted
+	] = await Promise.all([
 		Trade.deleteMany({ 'trade_owner.user_id': user_id }),
 		openDefaultTrade(userCollection.cards),
 		Trade.updateMany(
 			{ 'trade_accepter.user_id': user_id },
-			{ $set: { 'trade_accepter.user_id': 'deleted', 'trade_accepter.username': 'deleted' } }
+			{
+				$set: {
+					'trade_accepter.user_id': process.env.DELETED_ACC_PLACEHOLDER,
+					'trade_accepter.username': process.env.DELETED_ACC_PLACEHOLDER
+				}
+			}
 		),
 		Profile.updateMany(
 			{ favourite_collections: { $in: [username] } },
@@ -259,24 +280,28 @@ export const accountDelete = catchAsync(async (req, res, next) => {
 						'trade_accepter.user_id': {
 							$cond: [
 								{ $eq: ['$trade_accepter.user_id', user_id] },
-								'deleted',
+								process.env.DELETED_ACC_PLACEHOLDER,
 								'$trade_accepter.user_id'
 							]
 						},
 						'trade_accepter.username': {
 							$cond: [
 								{ $eq: ['$trade_accepter.user_id', user_id] },
-								'deleted',
+								process.env.DELETED_ACC_PLACEHOLDER,
 								'$trade_accepter.username'
 							]
 						},
 						'trade_owner.user_id': {
-							$cond: [{ $eq: ['$trade_owner.user_id', user_id] }, 'deleted', '$trade_owner.user_id']
+							$cond: [
+								{ $eq: ['$trade_owner.user_id', user_id] },
+								process.env.DELETED_ACC_PLACEHOLDER,
+								'$trade_owner.user_id'
+							]
 						},
 						'trade_owner.username': {
 							$cond: [
 								{ $eq: ['$trade_owner.user_id', user_id] },
-								'deleted',
+								process.env.DELETED_ACC_PLACEHOLDER,
 								'$trade_owner.username'
 							]
 						}
@@ -289,10 +314,27 @@ export const accountDelete = catchAsync(async (req, res, next) => {
 		User.deleteOne({ user_id })
 	]);
 
-	if (userCollection.image_path !== '/src/assets/default_profile.webp') {
-		fs.unlink(path.join(__dirname, `./../../..${userCollection.image_path}`));
+	if (userCollection.image_path !== process.env.DEFAULT_ACC_IMG_PATH) {
+		fs.access(`./../../..${userCollection.image_path}`, fs.constants.F_OK, (err) => {
+			if (err) return next(new APIError('No avatar found.', 500));
+			fs.unlink(path.join(__dirname, `./../../..${userCollection.image_path}`));
+		});
 	}
 
+	if (
+		!tradesDeleted ||
+		!defaultTradesOpened ||
+		!directTradesUpdated ||
+		!deletedFromFavCollections ||
+		!deletedFromTransactions ||
+		!profileDeleted ||
+		!collectionDeleted ||
+		!userDeleted
+	) {
+		// Reset everything back
+
+		return next(new APIError('Something went wrong while deleting your account.', 500));
+	}
 	res.status(200).json({ status: 'success' });
 });
 
