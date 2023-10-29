@@ -390,4 +390,8 @@ export const getUserCards = catchAsync(async (req, res, next) => {
 	res.status(200).json({ status: 'success', user_cards: userCards });
 });
 
-export const getUser = catchAsync(async (req, res, next) => {});
+export const getUser = catchAsync(async (req, res, next) => {
+	const { user_id } = req.user;
+
+	const userProfile = await Profile.findOne({ profile_id: user_id }).select(['-_id', 'gems_held']);
+});
