@@ -390,8 +390,16 @@ export const getUserCards = catchAsync(async (req, res, next) => {
 	res.status(200).json({ status: 'success', user_cards: userCards });
 });
 
+// eslint-disable-next-line no-unused-vars
 export const getUser = catchAsync(async (req, res, next) => {
 	const { user_id } = req.user;
 
-	const userProfile = await Profile.findOne({ profile_id: user_id }).select(['-_id', 'gems_held']);
+	const userProfile = await Profile.findOne({ profile_id: user_id }).select(['-_id', '-gems_held']);
+
+	const directTrades = await Trade.find({ 'trade_accepter.user_id': user_id });
+
+	res.status(200).json({
+		user: userProfile,
+		direct_trades: directTrades.length
+	});
 });
