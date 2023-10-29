@@ -61,3 +61,5 @@ export const getUserProfile = catchAsync(async (req, res, next) => {
 		transactions: populatedTransactions
 	});
 });
+
+export const getAllUsers = catchAsync(async (req, res, next) => {});

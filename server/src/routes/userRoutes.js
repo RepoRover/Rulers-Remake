@@ -7,7 +7,8 @@ import {
 	accountDelete,
 	deleteAvatar,
 	getUser,
-	getDirectTrades
+	getDirectTrades,
+	getUserCards
 } from './../controllers/userControllers.js';
 
 import protect from './../helpers/protect.js';
@@ -17,6 +18,7 @@ const router = Router();
 
 router.route('/').get(protect, getUser).delete(protect, accountDelete);
 router.route('/trades').get(protect, getDirectTrades);
+router.route('/cards').get(protect, getUserCards);
 router.route('/new-pwd').post(protect, changePassword);
 router.route('/new-name').post(protect, changeUsername);
 router

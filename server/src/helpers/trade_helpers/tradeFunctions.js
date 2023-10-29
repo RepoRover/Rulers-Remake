@@ -26,7 +26,7 @@ const openTrade = async (trade, user) => {
 	return newTrade.trade_id;
 };
 
-export const updateInSaleCardStatus = async (cardIds, user, toSale) => {
+export const updateInSaleCardStatus = async (cardIds, user, toSale, session) => {
 	let updateInSaleStatus;
 	updateInSaleStatus = await Card.updateMany(
 		{
@@ -38,7 +38,8 @@ export const updateInSaleCardStatus = async (cardIds, user, toSale) => {
 				'card_owner.user_id': user.user_id,
 				'card_owner.username': user.username
 			}
-		}
+		},
+		{ session }
 	);
 
 	if (!updateInSaleStatus) return false;
@@ -248,7 +249,7 @@ const getMetaData = async (trade) => {
 	return metaData;
 };
 
-export const openDefaultTrade = async (cardIds) => {
+export const openDefaultTrade = async (cardIds, session) => {
 	const mainAccProfile = await Profile.findOne({ username: process.env.MAIN_ACC_NAME });
 	const populatedCards = await Card.find({ card_id: { $in: cardIds } });
 
@@ -258,7 +259,8 @@ export const openDefaultTrade = async (cardIds) => {
 			user_id: mainAccProfile.profile_id,
 			username: mainAccProfile.username
 		},
-		true
+		true,
+		session
 	);
 
 	for (const card of populatedCards) {
@@ -300,7 +302,7 @@ export const openDefaultTrade = async (cardIds) => {
 			...trade
 		});
 
-		const tradeSave = await newTrade.save();
+		const tradeSave = await newTrade.save({ session });
 		if (!tradeSave) return false;
 	}
 

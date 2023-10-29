@@ -40,28 +40,29 @@ export const favouriteItem = (itemName) => {
 				return next(new APIError('Invalid item to favourite.', 400));
 		}
 
-		const profile = await Profile.findOne({ profile_id: user_id });
-		if (!profile) return next(new APIError("Can't find your profile.", 404));
-
 		const item = await Model.findOne({ [itemSearchKey]: itemSearchValue });
 		if (!item) return next(new APIError(notFoundMessage, 404));
 
 		if (itemName === 'trade' && user_id !== item.trade_accepter.user_id)
 			return next(new APIError('You can favourite direct trades only.', 401));
 
+		const profile = await Profile.findOne({ profile_id: user_id });
 		const alreadyFavourited = profile[profileField].includes(item[itemSearchKey]);
-		const updatedUserItems = alreadyFavourited
-			? profile[profileField].filter((id) => id !== item[itemSearchKey])
-			: [item[itemSearchKey], ...profile[profileField]];
 
-		const action = alreadyFavourited ? 'removed from' : 'added to';
-		const successMessage = `${successMessagePrefix} ${action} favourites.`;
-
-		const updateResult = await Profile.updateOne(
+		const profileUpdate = await Profile.findOneAndUpdate(
 			{ profile_id: user_id },
-			{ $set: { [profileField]: updatedUserItems } }
+			alreadyFavourited
+				? { $pull: { [profileField]: item[itemSearchKey] } }
+				: { $push: { [profileField]: item[itemSearchKey] } },
+			{ new: true }
 		);
-		if (!updateResult) return next(new APIError("Couldn't update favourites.", 500));
+
+		if (!profileUpdate) return next(new APIError("Couldn't update favourites.", 500));
+
+		const action = profileUpdate[profileField].includes(item[itemSearchKey])
+			? 'added to'
+			: 'removed from';
+		const successMessage = `${successMessagePrefix} ${action} favourites.`;
 
 		res.status(200).json({
 			status: 'success',

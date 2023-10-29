@@ -19,14 +19,9 @@ const protect = catchAsync(async (req, res, next) => {
 	if (!userId) return next(new APIError('No user id provided', 400));
 
 	let user;
+	user = await findUser({ user_id: userId });
 
-	if (userId) {
-		user = await findUser({ user_id: userId });
-	} else {
-		return next(new APIError('No user id included in provided token.', 401));
-	}
-
-	if (!user) return next(new APIError('No user found with given id.', 404));
+	if (!user) return next(new APIError('No user found.', 404));
 
 	// eslint-disable-next-line no-unused-vars
 	jwt.verify(user.refresh_token, process.env.REFRESH_TOKEN_SECRET, (err, decoded) => {

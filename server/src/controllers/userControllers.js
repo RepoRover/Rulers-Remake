@@ -14,6 +14,7 @@ import Hero from '../models/heroModel.js';
 import Card from '../models/cardModel.js';
 import Transaction from '../models/transactionModel.js';
 import User from '../models/userModel.js';
+import mongoose from 'mongoose';
 
 export const getDirectTrades = catchAsync(async (req, res, next) => {
 	const { user_id } = req.user;
@@ -186,7 +187,7 @@ export const deleteAvatar = catchAsync(async (req, res, next) => {
 
 const isMainAccount = (username) => username === process.env.MAIN_ACC_NAME;
 
-const mergeCollections = async (userId) => {
+const mergeCollections = async (userId, session) => {
 	const [userCollection, mainAccCollection] = await Promise.all([
 		Collection.findOne({ collection_id: userId }),
 		Collection.findOne({ username: process.env.MAIN_ACC_NAME })
@@ -203,23 +204,22 @@ const mergeCollections = async (userId) => {
 					epic_cards: userCollection.epic_cards + mainAccCollection.epic_cards,
 					rare_cards: userCollection.rare_cards + mainAccCollection.rare_cards
 				}
-			}
+			},
+			{ session }
 		);
 		await Collection.updateOne(
 			{ collection_id: userId },
-			{ $set: { cards: [], legendary_cards: 0, epic_cards: 0, rare_cards: 0 } }
+			{ $set: { cards: [], legendary_cards: 0, epic_cards: 0, rare_cards: 0 } },
+			{ session }
 		);
 	}
 
 	return userCollection;
 };
 
-export const accountDelete = catchAsync(async (req, res, next) => {
+const deleteUserOperations = async (req, session) => {
 	const { user_id, username } = req.user;
-
-	if (isMainAccount(username)) return next(new APIError("You can't delete this account.", 401));
-
-	const userCollection = await mergeCollections(user_id);
+	const userCollection = await mergeCollections(user_id, session);
 
 	const userTradesToUsers = await Trade.find({
 		'trade_owner.user_id': user_id,
@@ -228,20 +228,11 @@ export const accountDelete = catchAsync(async (req, res, next) => {
 
 	if (userTradesToUsers.length > 0) {
 		for (const directTrade of userTradesToUsers) {
-			const tradeAccepterProfile = await Profile.findOne({
-				profile_id: directTrade.trade_accepter.user_id
-			});
-
-			if (tradeAccepterProfile.favourite_trades.includes(directTrade.trade_id)) {
-				const updatedAccepterFavTrades = tradeAccepterProfile.favourite_trades.filter(
-					(tradeId) => tradeId !== directTrade.trade_id
-				);
-
-				await Profile.updateOne(
-					{ profile_id: directTrade.trade_accepter.user_id },
-					{ $set: { favourite_trades: updatedAccepterFavTrades } }
-				);
-			}
+			await Profile.updateOne(
+				{ profile_id: directTrade.trade_accepter.user_id },
+				{ $pull: { favourite_trades: directTrade.trade_id } },
+				{ session }
+			);
 		}
 	}
 
@@ -255,8 +246,8 @@ export const accountDelete = catchAsync(async (req, res, next) => {
 		collectionDeleted,
 		userDeleted
 	] = await Promise.all([
-		Trade.deleteMany({ 'trade_owner.user_id': user_id }),
-		openDefaultTrade(userCollection.cards),
+		Trade.deleteMany({ 'trade_owner.user_id': user_id }, { session }),
+		openDefaultTrade(userCollection.cards, session),
 		Trade.updateMany(
 			{ 'trade_accepter.user_id': user_id },
 			{
@@ -264,11 +255,13 @@ export const accountDelete = catchAsync(async (req, res, next) => {
 					'trade_accepter.user_id': process.env.DELETED_ACC_PLACEHOLDER,
 					'trade_accepter.username': process.env.DELETED_ACC_PLACEHOLDER
 				}
-			}
+			},
+			{ session }
 		),
 		Profile.updateMany(
 			{ favourite_collections: { $in: [username] } },
-			{ $pull: { favourite_collections: username } }
+			{ $pull: { favourite_collections: username } },
+			{ session }
 		),
 		Transaction.updateMany(
 			{
@@ -307,17 +300,20 @@ export const accountDelete = catchAsync(async (req, res, next) => {
 						}
 					}
 				}
-			]
+			],
+			{ session }
 		),
-		Profile.deleteOne({ profile_id: user_id }),
-		Collection.deleteOne({ collection_id: user_id }),
-		User.deleteOne({ user_id })
+		Profile.deleteOne({ profile_id: user_id }, { session }),
+		Collection.deleteOne({ collection_id: user_id }, { session }),
+		User.deleteOne({ user_id }, { session })
 	]);
 
 	if (userCollection.image_path !== process.env.DEFAULT_ACC_IMG_PATH) {
 		fs.access(`./../../..${userCollection.image_path}`, fs.constants.F_OK, (err) => {
-			if (err) return next(new APIError('No avatar found.', 500));
-			fs.unlink(path.join(__dirname, `./../../..${userCollection.image_path}`));
+			if (err) return false;
+			fs.unlink(path.join(__dirname, `./../../..${userCollection.image_path}`), (err) => {
+				if (err) return false;
+			});
 		});
 	}
 
@@ -331,13 +327,67 @@ export const accountDelete = catchAsync(async (req, res, next) => {
 		!collectionDeleted ||
 		!userDeleted
 	) {
-		// Reset everything back
+		return false;
+	}
 
+	return true;
+};
+
+export const accountDelete = catchAsync(async (req, res, next) => {
+	const { user_id, username } = req.user;
+	if (isMainAccount(username)) return next(new APIError("You can't delete this account.", 401));
+
+	const { password } = req.body;
+
+	const userDoc = await findUser({ user_id });
+
+	if (!userDoc) {
+		return next(new APIError('User not found.', 404));
+	}
+
+	const isMatch = await bcryptjs.compare(password, userDoc.password);
+
+	if (isMatch === false) {
+		return next(new APIError('Wrong password.', 403));
+	}
+
+	const session = await mongoose.startSession();
+	session.startTransaction();
+
+	const accDeleted = await deleteUserOperations(req, session);
+
+	if (!accDeleted) {
+		await session.abortTransaction();
+		await session.endSession();
 		return next(new APIError('Something went wrong while deleting your account.', 500));
 	}
+
+	await session.commitTransaction();
+	await session.endSession();
+
 	res.status(200).json({ status: 'success' });
 });
 
-export const getUser = catchAsync(async (req, res, next) => {});
+// eslint-disable-next-line no-unused-vars
+export const getUserCards = catchAsync(async (req, res, next) => {
+	const { user_id } = req.user;
+	const { name_search } = req.query;
 
-export const getAllUsers = catchAsync(async (req, res, next) => {});
+	let filters = { 'card_owner.user_id': user_id, in_sale: false };
+
+	if (name_search) {
+		filters.name = { $regex: name_search, $options: 'i' };
+	}
+
+	const userCards = await Card.find(filters).select([
+		'-in_sale',
+		'-hero_id',
+		'-card_owner',
+		'-description',
+		'-hero_link'
+	]);
+
+	res.status(200).json({ status: 'success', user_cards: userCards });
+});
+
+export const getUser = catchAsync(async (req, res, next) => {});
