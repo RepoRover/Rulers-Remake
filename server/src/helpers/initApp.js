@@ -633,6 +633,27 @@ const legendary = [
 	}
 ];
 
+const gemSets = [
+	{
+		image_path: '',
+		gem_amount: 5000,
+		price: 0,
+		available: true
+	},
+	{
+		image_path: '',
+		gem_amount: 5000,
+		price: 0,
+		available: true
+	},
+	{
+		image_path: '',
+		gem_amount: 5000,
+		price: 0,
+		available: true
+	}
+];
+
 const insertData = async () => {
 	try {
 		const response = await fetch(
@@ -771,6 +792,8 @@ const makeInitTrades = async () => {
 
 	await Promise.all(cards.map((card) => postTrade(card, access_token)));
 };
+
+const makeGemSets = async () => {};
 
 const initApp = async () => {
 	await insertData();

@@ -148,13 +148,17 @@ export const deleteTrade = catchAsync(async (req, res, next) => {
 
 // eslint-disable-next-line no-unused-vars
 export const getAllTrades = catchAsync(async (req, res, next) => {
-	const { page = 1, trade_type, search, role, rarity } = req.query;
+	const { page = 1, trade_type, search, role, rarity, _new } = req.query;
 
 	const skip = (page - 1) * process.env.ITEMS_PER_PAGE;
 
 	let filters = {
 		'trade_accepter.user_id': null
 	};
+
+	let sort = {};
+
+	if (_new) sort.created_at = -1;
 
 	const metaDataFilters = [];
 	if (search) {

@@ -10,6 +10,7 @@ import userRoutes from './routes/userRoutes.js';
 import heroRoutes from './routes/heroRoutes.js';
 import cardRoutes from './routes/cardRoutes.js';
 import transactionRoutes from './routes/transactionRoutes.js';
+import gemRoutes from './routes/gemRoutes.js';
 
 import { getUserProfile, getAllUsers } from './controllers/profileControllers.js';
 import globalErrorHandler from './controllers/errorController.js';
@@ -29,6 +30,7 @@ app.use(`/api/${process.env.API_VERSION}/heros`, heroRoutes);
 app.use(`/api/${process.env.API_VERSION}/trades`, tradeRoutes);
 app.use(`/api/${process.env.API_VERSION}/transactions`, transactionRoutes);
 app.use(`/api/${process.env.API_VERSION}/collections`, collectionRoutes);
+app.use(`/api/${process.env.API_VERSION}/gems`, gemRoutes);
 app.use(`/api/${process.env.API_VERSION}/profiles`, getAllUsers);
 app.use(`/api/${process.env.API_VERSION}/:username`, getUserProfile);
 

@@ -1,4 +1,5 @@
-import catchAsync from '../helpers/catchAsync';
+import catchAsync from '../helpers/catchAsync.js';
+import GemSet from '../models/gemSetModel.js';
 
 export const getAllGemSets = catchAsync(async (req, res, next) => {});
 

@@ -6,4 +6,6 @@ import { getAllGemSets, purchaseGemSet } from '../controllers/gemControllers.js'
 const router = Router();
 
 router.route('/').get(getAllGemSets);
-router.route('/gem_set_id').post(protect, purchaseGemSet);
+router.route('/:gem_set_id').post(protect, purchaseGemSet);
+
+export default router;

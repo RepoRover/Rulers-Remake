@@ -8,7 +8,7 @@ import { generateLinks } from '../helpers/linkGenerator.js';
 import { favouriteItem } from '../helpers/itemFavourite.js';
 
 export const getAllCollections = catchAsync(async (req, res, next) => {
-	const { page = 1, favourites, most_cards, username_search } = req.query;
+	const { page = 1, favourites, most_cards, username_search, _new } = req.query;
 
 	const skip = (page - 1) * process.env.ITEMS_PER_PAGE;
 
@@ -32,6 +32,9 @@ export const getAllCollections = catchAsync(async (req, res, next) => {
 	}
 
 	let sort = {};
+
+	if (_new) sort.created_at = -1;
+
 	if (most_cards) {
 		const most_cards_formatted = most_cards.toLowerCase();
 		switch (most_cards_formatted) {

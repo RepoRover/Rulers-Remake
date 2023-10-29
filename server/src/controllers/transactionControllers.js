@@ -45,5 +45,15 @@ export const getUserTransactions = catchAsync(async (req, res, next) => {
 export const getSingleTransaction = catchAsync(async (req, res, next) => {
 	const { transaction_id } = req.params;
 
-	res.status(200).json({ status: 'success', user_transactions: 'single' });
+	const transaction = await Transaction.findOne({ transaction_id });
+	if (!transaction) return next(new APIError('No transaction found.', 404));
+
+	if (Array.isArray(transaction.give)) {
+		transaction.give = await Card.find({ card_id: { $in: transaction.give } });
+	}
+	if (Array.isArray(transaction.take)) {
+		transaction.take = await Hero.find({ hero_id: { $in: transaction.take } });
+	}
+
+	res.status(200).json({ status: 'success', transaction });
 });
