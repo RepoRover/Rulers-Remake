@@ -5,6 +5,7 @@ import Card from './../models/cardModel.js';
 import Hero from './../models/heroModel.js';
 import Transaction from '../models/transactionModel.js';
 import APIError from '../helpers/APIError.js';
+import Profile from '../models/profileModel.js';
 
 export const getUserProfile = catchAsync(async (req, res, next) => {
 	const { username } = req.params;
@@ -19,6 +20,8 @@ export const getUserProfile = catchAsync(async (req, res, next) => {
 		'rare_cards'
 	]);
 
+	if (!userCollection) return next(new APIError("Couldn't find profile data.", 404));
+
 	const userTrades = await Trade.find({
 		'trade_owner.username': username,
 		'trade_accepter.user_id': null
@@ -30,7 +33,7 @@ export const getUserProfile = catchAsync(async (req, res, next) => {
 				trade.give = await Card.find({ card_id: { $in: trade.give } });
 			}
 			if (Array.isArray(trade.take)) {
-				trade.take = await Card.find({ card_id: { $in: trade.take } });
+				trade.take = await Hero.find({ hero_id: { $in: trade.take } });
 			}
 			return trade;
 		})
@@ -52,8 +55,6 @@ export const getUserProfile = catchAsync(async (req, res, next) => {
 		})
 	);
 
-	if (!userCollection) return next(new APIError("Couldn't find profile data.", 404));
-
 	res.status(200).json({
 		status: 'success',
 		profile: userCollection,
@@ -62,4 +63,16 @@ export const getUserProfile = catchAsync(async (req, res, next) => {
 	});
 });
 
-export const getAllUsers = catchAsync(async (req, res, next) => {});
+export const getAllUsers = catchAsync(async (req, res, next) => {
+	const { username } = req.query;
+
+	if (!username) return next(new APIError("Query 'username' is required.", 400));
+
+	const users = await Profile.find({ username: { $regex: username, $options: 'i' } }).select([
+		'username',
+		'image_path',
+		'profile_id'
+	]);
+
+	res.status(200).json({ users });
+});

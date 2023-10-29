@@ -46,7 +46,17 @@ const transactionSchema = new mongoose.Schema({
 	take_gems: {
 		type: Boolean,
 		required: true
+	},
+	created_at: {
+		type: Date
 	}
+});
+
+transactionSchema.pre('save', function (next) {
+	if (!this.created_at) {
+		this.created_at = new Date();
+	}
+	next();
 });
 
 const Transaction = mongoose.model('Transaction', transactionSchema);

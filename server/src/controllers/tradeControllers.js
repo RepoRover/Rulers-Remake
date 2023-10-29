@@ -18,6 +18,7 @@ import Card from '../models/cardModel.js';
 import { generateLinks } from '../helpers/linkGenerator.js';
 import { favouriteItem } from '../helpers/itemFavourite.js';
 import mongoose from 'mongoose';
+import Hero from '../models/heroModel.js';
 
 export const postNewTrade = catchAsync(async (req, res, next) => {
 	const { trade } = req.body;
@@ -32,7 +33,7 @@ export const postNewTrade = catchAsync(async (req, res, next) => {
 		const ownershipValid = await validateCards(user_id, trade.give);
 		if (!ownershipValid) return next(new APIError("You don't have cards you want to give.", 400));
 
-		const cardsAreNotInSale = await validateSaleStatus(trade.give, 'open');
+		const cardsAreNotInSale = await validateSaleStatus(trade.give);
 		if (!cardsAreNotInSale) return next(new APIError('Card/-s already in sale.', 400));
 	} else if (trade.give_gems) {
 		const enoughGems = await validateBalance(user_id, trade.give);
@@ -185,7 +186,7 @@ export const getAllTrades = catchAsync(async (req, res, next) => {
 				trade.give = await Card.find({ card_id: { $in: trade.give } });
 			}
 			if (Array.isArray(trade.take)) {
-				trade.take = await Card.find({ card_id: { $in: trade.take } });
+				trade.take = await Hero.find({ hero_id: { $in: trade.take } });
 			}
 			return trade;
 		})

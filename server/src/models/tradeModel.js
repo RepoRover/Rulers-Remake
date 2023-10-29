@@ -45,7 +45,17 @@ const tradeSchema = new mongoose.Schema({
 	take_gems: {
 		type: Boolean,
 		required: true
+	},
+	created_at: {
+		type: Date
 	}
+});
+
+tradeSchema.pre('save', function (next) {
+	if (!this.created_at) {
+		this.created_at = new Date();
+	}
+	next();
 });
 
 const Trade = mongoose.model('Trade', tradeSchema);

@@ -35,15 +35,10 @@ export const validateHeros = async (heroIdArray) => {
 	return true;
 };
 
-export const validateSaleStatus = async (cardIdsArray, tradeAction) => {
+export const validateSaleStatus = async (cardIdsArray) => {
 	const cards = await Card.find({ card_id: { $in: cardIdsArray } });
 	const cardsInSale = cards.map((card) => card.in_sale);
-
-	if (tradeAction === 'open' && cardsInSale.includes(true)) {
-		return false;
-	} else if (tradeAction === 'close' && cardsInSale.includes(false)) {
-		return false;
-	}
+	if (cardsInSale.includes(true)) return false;
 	return true;
 };
 

@@ -30,7 +30,17 @@ const collectionSchema = new mongoose.Schema({
 	cards: {
 		type: [String],
 		required: true
+	},
+	created_at: {
+		type: Date
 	}
+});
+
+collectionSchema.pre('save', function (next) {
+	if (!this.created_at) {
+		this.created_at = new Date();
+	}
+	next();
 });
 
 const Collection = mongoose.model('Collection', collectionSchema);
