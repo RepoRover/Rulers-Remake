@@ -20,6 +20,10 @@ import { favouriteItem } from '../helpers/itemFavourite.js';
 import mongoose from 'mongoose';
 import Hero from '../models/heroModel.js';
 
+const hasUniqueValues = (arr) => {
+	return arr.length === new Set(arr).size;
+};
+
 export const postNewTrade = catchAsync(async (req, res, next) => {
 	const { trade } = req.body;
 	const { user_id } = req.user;
@@ -30,6 +34,9 @@ export const postNewTrade = catchAsync(async (req, res, next) => {
 	}
 
 	if (!trade.give_gems) {
+		const cardsUnique = hasUniqueValues(trade.give);
+		if (!cardsUnique) return next(new APIError("You can't give two or more same cards.", 400));
+
 		const ownershipValid = await validateCards(user_id, trade.give);
 		if (!ownershipValid) return next(new APIError("You don't have cards you want to give.", 400));
 
@@ -158,7 +165,7 @@ export const getAllTrades = catchAsync(async (req, res, next) => {
 
 	let sort = {};
 
-	if (_new) sort.created_at = -1;
+	if (_new === 'true') sort.created_at = -1;
 
 	const metaDataFilters = [];
 	if (search) {
@@ -181,7 +188,7 @@ export const getAllTrades = catchAsync(async (req, res, next) => {
 		filters.metadata = { $all: metaDataFilters };
 	}
 
-	const trades = await Trade.find(filters).skip(skip).limit(process.env.ITEMS_PER_PAGE);
+	const trades = await Trade.find(filters).sort(sort).skip(skip).limit(process.env.ITEMS_PER_PAGE);
 	const totalTrades = await Trade.countDocuments(filters);
 
 	const populatedTrades = await Promise.all(

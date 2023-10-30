@@ -8,6 +8,7 @@ import Collection from '../models/collectionModel.js';
 import User from '../models/userModel.js';
 import { v4 } from 'uuid';
 import { fetch } from 'node-fetch';
+import GemSet from '../models/gemSetModel.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -635,22 +636,28 @@ const legendary = [
 
 const gemSets = [
 	{
-		image_path: '',
-		gem_amount: 5000,
+		image_path: '/src/assets/gems/1000.webp',
+		gem_amount: 1000,
 		price: 0,
 		available: true
 	},
 	{
-		image_path: '',
-		gem_amount: 5000,
-		price: 0,
-		available: true
+		image_path: '/src/assets/gems/500.webp',
+		gem_amount: 500,
+		price: 2,
+		available: false
 	},
 	{
-		image_path: '',
-		gem_amount: 5000,
-		price: 0,
-		available: true
+		image_path: '/src/assets/gems/2500.webp',
+		gem_amount: 2500,
+		price: 8,
+		available: false
+	},
+	{
+		image_path: '/src/assets/gems/6000.webp',
+		gem_amount: 6000,
+		price: 16,
+		available: false
 	}
 ];
 
@@ -793,11 +800,23 @@ const makeInitTrades = async () => {
 	await Promise.all(cards.map((card) => postTrade(card, access_token)));
 };
 
-const makeGemSets = async () => {};
+const makeGemSets = async () => {
+	for (const gemSet of gemSets) {
+		const gem_set_id = v4();
+
+		const newGemSet = new GemSet({
+			gem_set_id,
+			...gemSet
+		});
+
+		await newGemSet.save();
+	}
+};
 
 const initApp = async () => {
 	await insertData();
 	await makeInitTrades();
+	await makeGemSets();
 	process.exit();
 };
 
