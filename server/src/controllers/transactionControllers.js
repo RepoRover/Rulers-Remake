@@ -1,4 +1,4 @@
-import catchAsync from '../helpers/catchAsync';
+import catchAsync from '../helpers/catchAsync.js';
 import Profile from './../models/profileModel.js';
 import APIError from './../helpers/APIError.js';
 import Transaction from './../models/transactionModel.js';
