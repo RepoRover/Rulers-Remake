@@ -1,9 +1,14 @@
 <script>
 	export let data;
 	import { HeaderMenu } from '$components';
+	import { page } from '$app/stores';
 
-	// $: console.log(data);
+	const noLayoutUrls = ['/login', '/signup'];
 </script>
 
-<HeaderMenu />
-<slot />
+{#if noLayoutUrls.includes($page.url.pathname)}
+	<slot />
+{:else}
+	<HeaderMenu />
+	<slot />
+{/if}
