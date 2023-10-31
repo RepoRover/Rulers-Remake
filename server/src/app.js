@@ -23,16 +23,16 @@ app.use(express.json());
 
 if (process.env.ENV === 'dev') app.use(morgan('dev'));
 
-app.use(`/api/${process.env.API_VERSION}/me`, userRoutes);
-app.use(`/api/${process.env.API_VERSION}/auth`, authRoutes);
-app.use(`/api/${process.env.API_VERSION}/cards`, cardRoutes);
-app.use(`/api/${process.env.API_VERSION}/heros`, heroRoutes);
-app.use(`/api/${process.env.API_VERSION}/trades`, tradeRoutes);
-app.use(`/api/${process.env.API_VERSION}/transactions`, transactionRoutes);
-app.use(`/api/${process.env.API_VERSION}/collections`, collectionRoutes);
-app.use(`/api/${process.env.API_VERSION}/gems`, gemRoutes);
-app.use(`/api/${process.env.API_VERSION}/profiles`, getAllUsers);
-app.use(`/api/${process.env.API_VERSION}/:username`, getUserProfile);
+app.use(`/${process.env.API_VERSION}/me`, userRoutes);
+app.use(`/${process.env.API_VERSION}/auth`, authRoutes);
+app.use(`/${process.env.API_VERSION}/cards`, cardRoutes);
+app.use(`/${process.env.API_VERSION}/heros`, heroRoutes);
+app.use(`/${process.env.API_VERSION}/trades`, tradeRoutes);
+app.use(`/${process.env.API_VERSION}/transactions`, transactionRoutes);
+app.use(`/${process.env.API_VERSION}/collections`, collectionRoutes);
+app.use(`/${process.env.API_VERSION}/gems`, gemRoutes);
+app.use(`/${process.env.API_VERSION}/profiles`, getAllUsers);
+app.use(`/${process.env.API_VERSION}/:username`, getUserProfile);
 
 app.all('*', (req, res, next) => {
 	next(new APIError(`Can't find ${req.originalUrl} on this server!`, 404));
