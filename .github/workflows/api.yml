@@ -21,4 +21,4 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: 'npm'
       - run: npm i
-      - run: pm2 restart server --update-env
+      - run: pm2 restart rulers-api --update-env
