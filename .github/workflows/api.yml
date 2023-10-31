@@ -21,5 +21,6 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
-    - run: bun i
+    - run: npm i
+    - run: pm2 start server
     # - run: bun api
