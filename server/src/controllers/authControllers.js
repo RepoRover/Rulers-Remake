@@ -30,7 +30,7 @@ export const login = catchAsync(async (req, res, next) => {
 	const isMatch = await bcryptjs.compare(password, userDoc.password);
 
 	if (isMatch === false) {
-		return next(new APIError('Invalid credentioals.', 403));
+		return next(new APIError('Invalid credentials.', 403));
 	}
 
 	const { accessToken, refreshToken } = signTokens(userDoc.user_id);
